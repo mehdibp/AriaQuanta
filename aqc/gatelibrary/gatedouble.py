@@ -1,9 +1,7 @@
+from AriaQuanta._utils import np, swap_qubits, swap_qubits_density
 
-#import numpy as np
-from AriaQuanta._utils import np, swap_qubits, swap_qubits_density, is_unitary
 
-#////////////////////////////////////////////////////////////////////////////////////
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class GateDoubleQubit:
     def __init__(self, name, matrix, target_qubits):
         
@@ -66,9 +64,9 @@ class GateDoubleQubit:
 
         return density_matrix
     
-#////////////////////////////////////////////////////////////////////////////////////
-#///////// 2-Qubit Gates /////////
-#------------------------------------------------------------------------------------
+
+# 2-Qubit Gates -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class SWAP(GateDoubleQubit):
     def __init__(self, target_qubits_1=0, target_qubits_2=1):
         matrix = [[1, 0, 0, 0],
@@ -79,7 +77,7 @@ class SWAP(GateDoubleQubit):
         target_qubits = sorted(target_qubits)
         super().__init__(name='SWAP', matrix=matrix, target_qubits=target_qubits)  
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class ISWAP(GateDoubleQubit):
     def __init__(self, target_qubits_1=0, target_qubits_2=1):
         matrix = [[1, 0, 0, 0],
@@ -90,8 +88,7 @@ class ISWAP(GateDoubleQubit):
         target_qubits = sorted(target_qubits)
         super().__init__(name='ISWAP', matrix=matrix, target_qubits=target_qubits) 
 
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class SWAPsqrt(GateDoubleQubit):
     def __init__(self, target_qubits_1=0, target_qubits_2=1):
         matrix = [[1, 0, 0, 0],
@@ -102,7 +99,7 @@ class SWAPsqrt(GateDoubleQubit):
         target_qubits = sorted(target_qubits)
         super().__init__(name='SWAPsqrt', matrix=matrix, target_qubits=target_qubits)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 #class ISWAPsqrt(GateDoubleQubit):
 #    def __init__(self, target_qubits_1=0, target_qubits_2=1):
 #        matrix = [[1, 0, 0, 0],
@@ -113,7 +110,7 @@ class SWAPsqrt(GateDoubleQubit):
 #        target_qubits = sorted(target_qubits)
 #        super().__init__(name='ISWAPsqrt', matrix=matrix, target_qubits=target_qubits)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class SWAPalpha(GateDoubleQubit):
     def __init__(self, alpha, target_qubits_1=0, target_qubits_2=1):
         self.alpha = alpha
@@ -125,8 +122,8 @@ class SWAPalpha(GateDoubleQubit):
         target_qubits = sorted(target_qubits)
         super().__init__(name='SWAPalpha', matrix=matrix, target_qubits=target_qubits)  
 
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------------------
 class RXX(GateDoubleQubit):
     def __init__(self, phi, target_qubits_1=0, target_qubits_2=1):
         self._phi = phi
@@ -157,8 +154,7 @@ class RXX(GateDoubleQubit):
         self.matrix = matrix    
         return matrix 
 
-
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class RYY(GateDoubleQubit):
     def __init__(self, phi, target_qubits_1=0, target_qubits_2=1):
         self._phi = phi
@@ -189,7 +185,7 @@ class RYY(GateDoubleQubit):
         self.matrix = matrix    
         return matrix 
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class RZZ(GateDoubleQubit):
     def __init__(self, phi, target_qubits_1=0, target_qubits_2=1):
         self.phi = phi
@@ -201,7 +197,7 @@ class RZZ(GateDoubleQubit):
         target_qubits = sorted(target_qubits)
         super().__init__(name='RZZ', matrix=matrix, target_qubits=target_qubits) 
         
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class RXY(GateDoubleQubit):
     def __init__(self, phi, target_qubits_1=0, target_qubits_2=1):
         self.phi = phi
@@ -213,8 +209,8 @@ class RXY(GateDoubleQubit):
         target_qubits = sorted(target_qubits)
         super().__init__(name='RXY', matrix=matrix, target_qubits=target_qubits) 
 
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------------------
 class Barenco(GateDoubleQubit):
     def __init__(self, alpha, phi, theta, target_qubits_1=0, target_qubits_2=1):
         self.alpha = alpha
@@ -229,7 +225,7 @@ class Barenco(GateDoubleQubit):
         target_qubits = sorted(target_qubits)
         super().__init__(name='Barenco', matrix=matrix, target_qubits=target_qubits) 
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class Berkeley(GateDoubleQubit):
     def __init__(self, target_qubits_1=0, target_qubits_2=1):
         matrix = [[np.cos(np.pi / 8), 0, 0, +1j * np.sin(np.pi / 8)],
@@ -241,7 +237,7 @@ class Berkeley(GateDoubleQubit):
         target_qubits = sorted(target_qubits)
         super().__init__(name='Berkeley', matrix=matrix, target_qubits=target_qubits) 
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class Canonical(GateDoubleQubit):
     def __init__(self, a, b, c, target_qubits_1=0, target_qubits_2=1):
         self.a = a
@@ -256,7 +252,7 @@ class Canonical(GateDoubleQubit):
         target_qubits = sorted(target_qubits)
         super().__init__(name='Canonical', matrix=matrix, target_qubits=target_qubits) 
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class Givens(GateDoubleQubit):
     def __init__(self, theta, target_qubits_1=0, target_qubits_2=1):
         self.theta = theta
@@ -269,7 +265,7 @@ class Givens(GateDoubleQubit):
         target_qubits = sorted(target_qubits)
         super().__init__(name='Givens', matrix=matrix, target_qubits=target_qubits) 
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class Magic(GateDoubleQubit):
     def __init__(self, target_qubits_1=0, target_qubits_2=1):
         array = np.array([[1, +1j, 0, 0],
@@ -281,7 +277,7 @@ class Magic(GateDoubleQubit):
         target_qubits = sorted(target_qubits)
         super().__init__(name='Magic', matrix=matrix, target_qubits=target_qubits)     
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class Ruccsd(GateDoubleQubit):
     def __init__(self, theta, target_qubits_1=0, target_qubits_2=1):
 
@@ -300,7 +296,7 @@ class Ruccsd(GateDoubleQubit):
     def update_matrix(self):
         if isinstance(self.theta, str):
             matrix = r'Ruccsd ($\theta$)'
-        else:    
+        else:
             #matrix = np.array([
             #    [np.exp(-1j * self.theta / 2), 0.0],
             #    [0.0, np.exp(1j * self.theta / 2)]  
@@ -309,5 +305,6 @@ class Ruccsd(GateDoubleQubit):
             y = np.array([[0, -1j], [1j, 0]])
             mat = np.kron(x, y)
             matrix = np.exp(-1j * self.theta * mat)
-        self.matrix = matrix    
-        return matrix          
+        self.matrix = matrix
+        return matrix
+    

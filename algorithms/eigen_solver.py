@@ -1,10 +1,10 @@
-
+import re
+from AriaQuanta._utils import np
 from AriaQuanta.backend.simulator import Simulator
 from AriaQuanta.aqc.gatelibrary import H, Sdg
-import numpy as np
-import re
 
-#------------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------------------
 class Hamiltonian:
     def __init__(self, terms):
         """
@@ -18,7 +18,7 @@ class Hamiltonian:
         self.paulis = list(terms_dict.keys()) # paulis:  ['Z1', 'X2Z3']
         self.coefs = np.array(list(terms_dict.values()))  # [0.5 0.3]
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 def pauli_transform_circuit(circuit, pauli_string):
     # example of pauli string: "Z0X1"
 
@@ -40,7 +40,7 @@ def pauli_transform_circuit(circuit, pauli_string):
            
     return circuit_copy
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 def find_expectation_value(circuit, hamiltonian, num_of_iter_measure):
         
     pauli_exp_value = {}
@@ -101,31 +101,3 @@ def find_expectation_value(circuit, hamiltonian, num_of_iter_measure):
     #  0.2
     return pauli_exp_value, total_energy
 
-
-
-"""
-#---------------------------------------
-# <p> = sum(p_b * (-1)**(parity))
-# find parity 
-probability_keys = [x[1:-1] for x in probability.keys()]
-parity = []
-for item in probability_keys:
-    x = sum(int(digit) for digit in item)
-    parity.append(x%2)
-parity = np.array(parity)  
-# find <p>
-probability_values = np.fromiter(probability.values(), dtype=float)
-#probability_ave = sum(probability_values * (-1)**(parity))
-expectation_value = sum(probability_values * (-1)**(parity))
-#print("probability_ave = ", probability_ave)
-
-return expectation_value, counts
-
-# Compute expectation value
-#expectation_value = 0
-#for bitstring, prob in probability.items():
-#    parity = sum(int(digit) for digit in bitstring[1:-1]) % 2
-#    expectation_value += prob * (-1) ** parity
-#print("expectation_value =", expectation_value)
-#return expectation_value
-"""

@@ -1,10 +1,8 @@
-
-#import numpy as np
+import math
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
 from AriaQuanta._utils import np
-import math
 
 class CircuitVisualizer:
     gate_plotters = {}
@@ -71,9 +69,7 @@ class CircuitVisualizer:
 
         return fig, ax
 
-#------------------------------------------------------------------------------------
-#/////////////////////////////// General Plots ///////////////////////////////
-#------------------------------------------------------------------------------------
+# General Plots -----------------------------------------------------------------------------
 def plot_default(ax, i, gate_i):
     for q in gate_i.qubits:
         ax.text(i, q, gate_i.name, fontsize=12, ha='center', va='center',
@@ -86,15 +82,13 @@ def register_gate_plotter(gate_name):
         return func
     return decorator
 
-#------------------------------------------------------------------------------------
-#/////////////////////////////// GateSingleQubit ///////////////////////////////
-#------------------------------------------------------------------------------------
+# Gate Single Qubit -------------------------------------------------------------------------
 # Default:
 # I, X, Y, Z, H, S, T
 # Others:
 # Ph, Xsqrt, P, RX, RY, RZ, Rot
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('GPh')
 def plot_gate(ax, i, gate_i):
     gate_i_name = gate_i.name
@@ -105,7 +99,7 @@ def plot_gate(ax, i, gate_i):
         ax.text(i, q, this_text, fontsize=12, ha='center', va='center',
                 bbox=dict(boxstyle='round,pad=0.5', edgecolor='black', facecolor='lightblue'))
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('Xsqrt')
 def plot_gate(ax, i, gate_i):
     gate_i_name = gate_i.name
@@ -115,7 +109,7 @@ def plot_gate(ax, i, gate_i):
         ax.text(i, q, this_text, fontsize=12, ha='center', va='center',
                 bbox=dict(boxstyle='round,pad=0.5', edgecolor='black', facecolor='lightblue'))
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('P')
 def plot_gate(ax, i, gate_i):
     gate_i_name = gate_i.name
@@ -126,7 +120,7 @@ def plot_gate(ax, i, gate_i):
         ax.text(i, q, this_text, fontsize=12, ha='center', va='center',
                 bbox=dict(boxstyle='round,pad=0.5', edgecolor='black', facecolor='lightblue'))
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('RX')
 @register_gate_plotter('RY')
 @register_gate_plotter('RZ')
@@ -146,7 +140,7 @@ def plot_gate(ax, i, gate_i):
         ax.text(i, q, this_text, fontsize=12, ha='center', va='center',
                 bbox=dict(boxstyle='round,pad=0.5', edgecolor='black', facecolor='lightblue'))
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('Rot')
 def plot_gate(ax, i, gate_i):
     gate_i_name = gate_i.name
@@ -159,13 +153,10 @@ def plot_gate(ax, i, gate_i):
         ax.text(i, q, this_text, fontsize=11, ha='center', va='center',
                 bbox=dict(boxstyle='round,pad=0.5', edgecolor='black', facecolor='lightblue'))
                                         
-#------------------------------------------------------------------------------------
-#/////////////////////////////// GateDoubleQubit ///////////////////////////////
-#   /////////////////////////////// SWAP Gates ///////////////////////////////
-#------------------------------------------------------------------------------------
+# Gate Double Qubit -------------------------------------------------------------------------
 # SWAP, ISWAP, SWAPsqrt, ISWAPsqrt, SWAPalpha
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('SWAP')
 def plot_gate(ax, i, gate_i): 
     gate_i_name = gate_i.name
@@ -174,7 +165,7 @@ def plot_gate(ax, i, gate_i):
     ax.plot(i, gate_i_qubits[0], 'mx', markersize=14)
     ax.plot(i, gate_i_qubits[1], 'mx', markerfacecolor='None', markersize=14)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('ISWAP')
 def plot_gate(ax, i, gate_i): 
     gate_i_name = gate_i.name
@@ -185,7 +176,7 @@ def plot_gate(ax, i, gate_i):
     ax.plot(i, gate_i_qubits[1], 'ms', markersize=14)
     ax.plot(i, gate_i_qubits[1], 'wx', markerfacecolor='None', markersize=14)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('SWAPsqrt')
 def plot_gate(ax, i, gate_i): 
     gate_i_name = gate_i.name
@@ -197,7 +188,7 @@ def plot_gate(ax, i, gate_i):
     ax.text(i, (gate_i_qubits[0]+gate_i_qubits[1])/2, this_text, fontsize=10, ha='center', va='center',
                 bbox=dict(boxstyle=f"circle,pad=0.5", edgecolor='black', facecolor='#DDA0DD'))
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('ISWAPsqrt')
 def plot_gate(ax, i, gate_i): 
     gate_i_name = gate_i.name
@@ -211,7 +202,7 @@ def plot_gate(ax, i, gate_i):
     ax.text(i, (gate_i_qubits[0]+gate_i_qubits[1])/2, this_text, fontsize=10, ha='center', va='center',
                 bbox=dict(boxstyle=f"circle,pad=0.5", edgecolor='black', facecolor='#DDA0DD'))
         
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('SWAPalpha')
 def plot_gate(ax, i, gate_i): 
     gate_i_name = gate_i.name
@@ -225,13 +216,10 @@ def plot_gate(ax, i, gate_i):
     ax.text(i, (gate_i_qubits[0]+gate_i_qubits[1])/2, this_text, fontsize=10, ha='center', va='center',
                 bbox=dict(boxstyle=f"circle,pad=0.5", edgecolor='black', facecolor='#DDA0DD'))
 
-#------------------------------------------------------------------------------------
-#/////////////////////////////// GateDoubleQubit ///////////////////////////////
-#////////////////////////////// Rotational Gates ///////////////////////////////
-#------------------------------------------------------------------------------------
+# Rotational Gates --------------------------------------------------------------------------
 # RXX, RYY, RZZ, RXY
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('RXX')
 @register_gate_plotter('RYY')
 @register_gate_plotter('RZZ')
@@ -280,13 +268,10 @@ def plot_gate(ax, i, gate_i):
         verticalalignment='bottom',
         fontsize=12, color='k')
 
-#------------------------------------------------------------------------------------
-#/////////////////////////////// GateDoubleQubit ////////////////////////////////
-#//////////////////////////////  Other 2-qubit Gates ////////////////////////////
-#------------------------------------------------------------------------------------
+# Other 2-qubit Gates -----------------------------------------------------------------------
 # Barenco, Berkeley, Canonical, Givens, Magic
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('Barenco')
 @register_gate_plotter('Berkeley')
 @register_gate_plotter('Canonical')
@@ -324,12 +309,10 @@ def plot_gate(ax, i, gate_i):
         fontsize=12, color='k')
 
 
-#------------------------------------------------------------------------------------
-#/////////////////////////////// GateTripleQubit ///////////////////////////////
-#------------------------------------------------------------------------------------
+# Gate Triple Qubit--------------------------------------------------------------------------
 # CCX (Toffoli), RCCX (Margolus), CSWAP(Fredkin) 
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('CCX')
 def plot_gate(ax, i, gate_i):
     gate_i_name = gate_i.name
@@ -340,7 +323,7 @@ def plot_gate(ax, i, gate_i):
     ax.plot(i, gate_i_qubits[2], 'k+', markerfacecolor='None', markersize=20)
     ax.plot([i, i, i], gate_i_qubits, 'k')
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('RCCX')
 def plot_gate(ax, i, gate_i):
     gate_i_name = gate_i.name
@@ -377,7 +360,7 @@ def plot_gate(ax, i, gate_i):
         verticalalignment='center',
         fontsize=12, color='k', rotation=90)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('CSWAP')
 def plot_gate(ax, i, gate_i):
     gate_i_name = gate_i.name
@@ -388,13 +371,10 @@ def plot_gate(ax, i, gate_i):
     ax.plot([i, i, i], gate_i_qubits, 'k')
 
 
-#------------------------------------------------------------------------------------
-#/////////////////////////////// GateControlQubit ///////////////////////////////
-#------------------------------------------------------------------------------------
-# CX, CZ, CP,
-# CS, CSX, CU
+# Gate Control Qubit ------------------------------------------------------------------------
+# CX, CZ, CP, CS, CSX, CU
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('CX')  # o---+o
 def plot_gate(ax, i, gate_i):
     gate_i_name = gate_i.name
@@ -406,7 +386,7 @@ def plot_gate(ax, i, gate_i):
     ax.plot(i, gate_i_qubits[1], '+', color=mycolor, markerfacecolor='None', markersize=20)
     ax.plot([i, i], gate_i_qubits, color=mycolor)      
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('CZ')    # o----o
 def plot_gate(ax, i, gate_i):
     gate_i_name = gate_i.name
@@ -417,7 +397,7 @@ def plot_gate(ax, i, gate_i):
     ax.plot(i, gate_i_qubits[1], 'o', color=mycolor, markersize=12)
     ax.plot([i, i], gate_i_qubits, color=mycolor)  
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('CP')    # o----P(phi)
 def plot_gate(ax, i, gate_i):
     gate_i_name = gate_i.name
@@ -436,7 +416,7 @@ def plot_gate(ax, i, gate_i):
     ax.text(i, gate_i_qubits[1], this_text, fontsize=12, ha='center', va='center',
         bbox=dict(boxstyle='round,pad=0.4', edgecolor=mycolor, facecolor='white'))
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('CS')   # o----S, o----sqrt(X)
 @register_gate_plotter('CSX')
 @register_gate_plotter('CRX')
@@ -461,7 +441,7 @@ def plot_gate(ax, i, gate_i):
     ax.text(i, gate_i_qubits[1], this_text[gate_i_name], fontsize=12, ha='center', va='center',
         bbox=dict(boxstyle='round,pad=0.4', edgecolor=mycolor, facecolor='white'))
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('CU')
 def plot_gate(ax, i, gate_i):
     gate_i_qubits = gate_i.qubits
@@ -491,11 +471,10 @@ def plot_gate(ax, i, gate_i):
         verticalalignment='center',
         fontsize=12) #, rotation=90)
     
-#------------------------------------------------------------------------------------
-#/////////////////////////////// GateCustom ///////////////////////////////
-#------------------------------------------------------------------------------------
+# Gate Custom -------------------------------------------------------------------------------
 # Custom, CNZ
-#------------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('Custom')
 def plot_gate(ax, i, gate_i):
     gate_i_name = gate_i.name
@@ -516,7 +495,7 @@ def plot_gate(ax, i, gate_i):
         verticalalignment='center',
         fontsize=12)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('CNZ')    # o----o----o----o
 def plot_gate(ax, i, gate_i):
     gate_i_name = gate_i.name
@@ -533,7 +512,7 @@ def plot_gate(ax, i, gate_i):
 # visualizer = CircuitVisualizer(circuit)
 # visualizer.visualize()
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 @register_gate_plotter('MeasureQubit')
 def plot_gate(ax, i, gate_i):
     mycolor = "#ededed"

@@ -1,7 +1,7 @@
-
 from AriaQuanta.aqc.circuit import Circuit
 from AriaQuanta.aqc.gatelibrary import X, H, CX
 
+# -------------------------------------------------------------------------------------------
 def dj(n_qubits, is_constant=True):
     """
     Implements the Deutsch-Jozsa algorithm for a given number of qubits.

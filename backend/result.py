@@ -1,21 +1,16 @@
-
-import math
 import matplotlib.pyplot as plt
-from AriaQuanta._utils import np
-#import pandas as pd
 from collections import Counter
+from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit, sv_reorder_qubits
 
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class Result():
     def __init__(self, statevector_all, num_of_qubits, num_of_ancilla, measurequbit_values_all): #, output_all):
         self.statevector_all = statevector_all
         self.num_of_qubits = num_of_qubits
         self.num_of_ancilla = num_of_ancilla
         self.measurequbit_values_all = measurequbit_values_all
-
-        # self.density_matrix_all
 
     #----------------------------------------------
     @property
@@ -84,14 +79,11 @@ class Result():
             measurequbit_values_all = self.measurequbit_values_all
             if all(x=='' for x in measurequbit_values_all[0].values()):
                 keys = ['q' + str(i) for i in range(self.num_of_qubits)]
-                #print(keys)
             else:
                 keys = list(measurequbit_values_all[0].keys())
-                #print(keys)
 
         else:
-            keys = clbits 
-            #print(keys)       
+            keys = clbits   
 
         select_idx = sorted([int(item[1:]) for item in keys])   # remove 'q'  
 
@@ -110,7 +102,6 @@ class Result():
             this_qc.statevector = statevector_all[i]
             measurement = this_qc.measure_all()        # e.g. |001>
             measurement = measurement[1:num_of_remaining_qubits+1]   # +1 is for '|' charachter in the measurement output
-            #print(measurement)
             measurement_select = ''.join(measurement[n] for n in select_idx)
             measurement_select = '|' + measurement_select + '>'
             measurement_all.append(measurement_select) # append(measurement[1:-1])  # remove the braces
@@ -140,17 +131,16 @@ class Result():
 
         return counts, probability    
 
-#----------------------------------------------    
+
+# -------------------------------------------------------------------------------------------
 def sv_to_density_matrix(statevector):
-    
     this_state = statevector
     this_density_matrix = this_state @ this_state.T
     
     return this_density_matrix
 
-#---------------------------------------------- 
+# -------------------------------------------------------------------------------------------
 def plot_histogram(counter):
-
     plt.rc('font', family='sans-serif')
     plt.rcParams['font.size']= 14
     plt.rcParams['axes.linewidth']= 1.5
@@ -160,58 +150,7 @@ def plot_histogram(counter):
     ax.set_xticks(ax.get_xticks())
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha='right')
 
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class ResultDensity():
     def __init__(self, density_matrix_all):
         self.density_matrix_all = density_matrix_all
-
-
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------      
-
-# count based on statevector_all
-"""
-#----------------------------------------------     
-def count(self):
-
-    statevector_all = self.statevector_all
-
-    num_of_qubits = self.num_of_qubits
-    num_of_ancilla = self.num_of_ancilla
-    num_of_remaining_qubits = num_of_qubits - num_of_ancilla
-    num_of_remaining_states = 2**num_of_remaining_qubits
-
-    num_of_iterations = len(statevector_all)
-
-    bin_format = '#0' + str(num_of_remaining_qubits + 2) + 'b' # #05b
-    all_states = [format(x, bin_format)[2:] for x in range(num_of_remaining_states)] 
-    all_states = ["|"+item+">" for item in all_states]       
-
-    measurement_all = []
-    for i in range(num_of_iterations):
-        this_qc = Circuit(num_of_qubits=num_of_qubits, num_of_ancilla=num_of_ancilla)
-        this_qc.statevector = statevector_all[i]
-        measurement = this_qc.measure_all()        # e.g. |001>
-        #measurement = measurement[1:num_of_remaining_qubits+1]   # +1 is for '|' charachter in the measurement output
-        #measurement = '|' + measurement + '>'
-        measurement_all.append(measurement) # append(measurement[1:-1])  # remove the braces
-
-    counts = Counter(measurement_all) 
-
-    #----------------------------------------------
-    # Add missing keys with a count of 0
-    for state_i in all_states:
-        if state_i not in counts:
-            counts[state_i] = 0
-
-    # Sort the keys in the desired order
-    counts = {key: counts[key] for key in sorted(all_states)}
-
-    #----------------------------------------------
-    # also find the probabilities:
-    probability = {key: counts[key]/num_of_iterations for key in sorted(all_states)}
-
-    return counts, probability
-
-"""    

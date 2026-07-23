@@ -1,19 +1,15 @@
-
-#import numpy as np
-import matplotlib.pyplot as plt
 from copy import deepcopy
-#from collections import defaultdict
+import matplotlib.pyplot as plt
 
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.qubit import MultiQubit
 from AriaQuanta.aqc.gatelibrary import Custom
 from AriaQuanta.aqc.measure import Measure
 from AriaQuanta.aqc.operations import If_cbit
-from AriaQuanta.aqc.gatelibrary import CX, RY, RZ
 from AriaQuanta.aqc.gatelibrary import GateSingleQubit
 
 
-
+# -------------------------------------------------------------------------------------------
 class Circuit:
     def __init__(self, num_of_qubits, num_of_clbits=0, num_of_ancilla=0, list_of_qubits=[]):
 
@@ -23,18 +19,11 @@ class Circuit:
         self.num_of_ancilla = num_of_ancilla
 
         # result of the measurement / measurement.qubit_values_dict
-        self.measurequbit_values = {} 
-        # measurement.qubit_values_dict = {'q0':0, 'q1':0}  # for the circuit and outputting
-        # measurement.clbit_values_dict = {'c0':0, 'c1':0}  # 'c0' or any user-defined charachter for If_cbit condition
+        self.measurequbit_values = {}
 
         self.gates = []
-        #self.gatesinfo  # as a property
 
         self.width = num_of_qubits+num_of_clbits    # number of wires
-        #self.size:   # as a property               # number of gates
-        #self.depth:  # as a property               # number of operations (independent gates)
-
-        #--- romovied -- self.data:   # as a property  # dictionary of everything
             
 
         #--------------------------------------------
@@ -47,10 +36,6 @@ class Circuit:
 
         self.initial_state = initial_state    
         self.statevector = initial_state
-        #self.statevector_reorder       # as a property             # show statevector as in Qiskit
-
-        #self.density_matrix = density_matrix   # as a property     # only for output
-        #self.density_matrix_reorder = density_matrix_reorder # as a property
 
     #----------------------------------------------
     @property
@@ -61,8 +46,6 @@ class Circuit:
         bin_format = '#0' + str(num_of_qubits + 2) + 'b' # #05b
         all_states = [format(x, bin_format)[2:] for x in range(num_of_states)]
         all_states = [x[::-1] for x in all_states]
-        #print(all_states) # ['00', '10', '01', '11']
-        #                    [q1=0 q0=0, q1=1 q0=0, q1=0 q0=1, q1=1 q0=1]  
         new_indices = [int(x, 2) for x in all_states]
         statevector_reorder = self.statevector[new_indices]
         return statevector_reorder  
@@ -142,30 +125,21 @@ class Circuit:
             size_target_qubits = np.size(target_qubits)
             for i in range(size_target_qubits):
                 gate_copy = deepcopy(gate)
-                gate_copy.target_qubits = [target_qubits[i]]   
-                self.gates.append(gate_copy)   
-                # print("i = ", i)
-                # print("gate_copy = ", gate_copy)
-                # print("target_qubits = ",gate_copy.target_qubits)
-                # print("qubits = ", gate_copy.qubits)                             
+                gate_copy.target_qubits = [target_qubits[i]]
+                self.gates.append(gate_copy)                        
         else:
             self.gates.append(gate)   
 
     #----------------------------------------------
     def run(self):
-        #count=0
         measurequbit_values = {}
         for gate in self.gates:
-            #print(gate)
-            #print(gate.qubits)
             if isinstance(gate, Measure):
                 state = gate.apply(self.num_of_qubits, self.statevector)
                 clbit_values_dict = gate.clbit_values_dict
                 qubit_values_dict = gate.qubit_values_dict
                 
                 measurequbit_values.update(qubit_values_dict)    # modifies z with keys and values of y
-                #print(qubit_values_dict) # default: q0, q1, q2, ...
-                #print(clbit_values_dict) # user-defined or default: c0, c1, c2, ...
 
             elif isinstance(gate, If_cbit):
                 conditions = gate.conditions
@@ -173,7 +147,6 @@ class Circuit:
                     state = gate.apply(self.num_of_qubits, self.statevector)
             else:
                 state = gate.apply(self.num_of_qubits, self.statevector)
-            #print(state)
             self.statevector = state
 
         #----------------------------------------------------
@@ -229,7 +202,7 @@ class Circuit:
         qc_copy = deepcopy(self)
         return qc_copy
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 def sv_reorder_qubits(statevector):
     num_of_states = np.shape(statevector)[0]
     num_of_qubits = int(np.log2(num_of_states)) 
@@ -237,13 +210,11 @@ def sv_reorder_qubits(statevector):
     bin_format = '#0' + str(num_of_qubits + 2) + 'b' # #05b
     all_states = [format(x, bin_format)[2:] for x in range(num_of_states)]
     all_states = [x[::-1] for x in all_states]
-    #print(all_states) # ['00', '10', '01', '11']
-    #                    [q1=0 q0=0, q1=1 q0=0, q1=0 q0=1, q1=1 q0=1]  
     new_indices = [int(x, 2) for x in all_states]
     statevector_reorder = statevector[new_indices]
     return statevector_reorder  
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 def sv_to_probabilty(statevector, plot=True):
     plt.rc('font', family='sans-serif')
     plt.rcParams['font.size']= 14
@@ -262,8 +233,6 @@ def sv_to_probabilty(statevector, plot=True):
     bin_format = '#0' + str(num_of_qubits + 2) + 'b' # #05b
     all_states = [format(x, bin_format)[2:] for x in range(num_of_states)]
     
-    #if reorder==True:
-    #    all_states = [x[::-1] for x in all_states]   
     xtickes = all_states  
 
     probabilities_dict = {}
@@ -279,8 +248,7 @@ def sv_to_probabilty(statevector, plot=True):
 
     return probabilities_dict
 
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------   
+# -------------------------------------------------------------------------------------------  
 def to_gate(qc):   # quantum circuit
 
     num_of_qubits = qc.num_of_qubits
@@ -291,13 +259,10 @@ def to_gate(qc):   # quantum circuit
     # state_0
     state_0 = this_qc.statevector
     state_0_norm = state_0 / np.linalg.norm(state_0)
-    #print(this_qc.data)
  
     # state_1
     state_1 = this_qc.run()
-    #print(this_qc.data)
     state_1_norm = state_1 / np.linalg.norm(state_1)
-    #print(this_qc.data)
 
     #------------
     # state_1 -> normalized last state
@@ -319,21 +284,3 @@ def to_gate(qc):   # quantum circuit
     circuit_gate.name = 'Circuit_gate'
 
     return circuit_gate
-      
-
-    #----------------------------------------------
-    # @property
-    # def data(self):
-    #    dict_data = {}
-
-    #    dict_data['depth'] = self.depth
-    #    dict_data['gates'] = self.gates
-    #    dict_data['num_of_qubits'] = self.num_of_qubits
-    #    dict_data['size'] = self.size
-    #    dict_data['statevector'] = self.statevector
-    #    dict_data['width'] = self.width
-    #    dict_data['density_matrix'] = self.density_matrix
-
-    #    return dict_data
-         
-

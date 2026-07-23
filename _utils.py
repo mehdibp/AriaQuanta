@@ -1,15 +1,14 @@
-#import numpy as np
-
 from AriaQuanta.config import Config, get_array_module
 
-#------------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------------------
 np = get_array_module(Config.use_gpu)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 def is_unitary(matrix):
     return np.allclose(matrix @ matrix.conj().T, np.eye(matrix.shape[0]), atol=1e-10)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 def swap_qubits(idx1_, idx2_, num_of_qubits, multistate):
 
     idx1 = min(idx1_, idx2_)
@@ -38,7 +37,7 @@ def swap_qubits(idx1_, idx2_, num_of_qubits, multistate):
     multistate_swaped = multistate[indices_swaped]
     return multistate_swaped
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 def swap_qubits_density(idx1, idx2, num_of_qubits, density_matrix):
 
     indices_swaped = []
@@ -67,6 +66,7 @@ def swap_qubits_density(idx1, idx2, num_of_qubits, density_matrix):
 
     return density_matrix_swaped
 
+# -------------------------------------------------------------------------------------------
 def reorder_state(state):
     num_of_states = np.shape(state)[0]
     num_of_qubits = int(np.log2(num_of_states)) 

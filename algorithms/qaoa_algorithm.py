@@ -1,11 +1,9 @@
-
-import numpy as np
-from AriaQuanta.algorithms import VQE, Hamiltonian, find_expectation_value
-from AriaQuanta.aqc.gatelibrary import CP, H, RX, CX, RZ
+from AriaQuanta.algorithms import VQE, Hamiltonian
+from AriaQuanta.aqc.gatelibrary import H, RX, CX, RZ
 from AriaQuanta.aqc.ansatz import Ansatz
 from AriaQuanta.backend import Simulator
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class QAOA(VQE):
     def __init__(self, graph, n_layers, num_of_iter_measure, initial_values, optimizer='COBYLA'):
         
@@ -38,7 +36,7 @@ class QAOA(VQE):
         return result, counts
 
 
-#------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 def GraphHamiltonian(graph):  
     graph = graph
     pauli_list = []
@@ -54,7 +52,7 @@ def GraphHamiltonian(graph):
     hamiltonian = Hamiltonian(pauli_list)        
     return(hamiltonian)   
 
-#------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 def cost_hamiltonian(graph, ansatz, gamma):
     """Applies cost unitary U_C based on the problem graph."""
     qubits = list(range(ansatz.num_of_qubits))
@@ -64,15 +62,14 @@ def cost_hamiltonian(graph, ansatz, gamma):
             ansatz | RZ(gamma, qubits[v])            
             ansatz | CX(qubits[u], qubits[v])
 
-#------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 def mixer_hamiltonian(ansatz, beta):
     """Applies mixer unitary U_B."""
     qubits = list(range(ansatz.num_of_qubits))
     for q in qubits:
         ansatz | RX(beta, q)   #(q, 2 * beta) 
              
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 def GraphAnsatz(graph, n_layers):
     num_qubits = graph.num_nodes()
     beta_names = []

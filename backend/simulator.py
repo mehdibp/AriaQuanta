@@ -1,24 +1,20 @@
-
-# from functools import partial
 import os
 import timeit
 import concurrent.futures
 
 from AriaQuanta.backend.job import Job
 from AriaQuanta.backend.result import Result, ResultDensity
+from AriaQuanta._utils import Config
 
-from AriaQuanta._utils import np, Config
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class Simulator():
-
     def __init__(self):
         self.circuit = 'None'
         self.iterations = 0
 
     def loop_run(self, job_id):
         this_job = Job(job_id)
-        #state, output = this_job.job_run(self.circuit, self.density)
         state, measurequbit_values = this_job.job_run(self.circuit, self.density)
         return state, measurequbit_values
 
@@ -28,7 +24,6 @@ class Simulator():
         self.iterations = iterations
         self.density = density
 
-        #---------------------------------------
 
         statevector_all = [[]]*iterations
         output_all = [[]]*iterations
@@ -76,7 +71,7 @@ class Simulator():
 
         return result           
 
-#------------------------------------------------------------------------------------       
+# -------------------------------------------------------------------------------------------
 def profile_executor(executor_class, function, iterable, max_workers):
     with executor_class(max_workers=max_workers) as executor:
         start_time = timeit.default_timer()
@@ -84,7 +79,7 @@ def profile_executor(executor_class, function, iterable, max_workers):
         elapsed = timeit.default_timer() - start_time
     return elapsed
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 def choose_best_executor(function, iterable, max_workers=None):
     if max_workers is None:
         max_workers = os.cpu_count()  # Use number of CPU cores as default
@@ -97,8 +92,6 @@ def choose_best_executor(function, iterable, max_workers=None):
 
     # Choose the best executor
     if thread_time < process_time:
-        #print(f"ThreadPoolExecutor is faster ({thread_time:.4f} seconds).")
         return concurrent.futures.ThreadPoolExecutor, thread_time
     else:
-        #print(f"ProcessPoolExecutor is faster ({process_time:.4f} seconds).")
         return concurrent.futures.ProcessPoolExecutor, process_time

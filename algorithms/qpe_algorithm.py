@@ -1,10 +1,9 @@
-
-import numpy as np
 from AriaQuanta.aqc.gatelibrary import H, CU
 from AriaQuanta.aqc.circuit import Circuit
 from AriaQuanta.algorithms import iqft
 
-# Quantum Phase Estimation Algorithm
+
+# Quantum Phase Estimation Algorithm --------------------------------------------------------
 def qpe(unitary_matrix, t_counting_qubits, namedraw='CU'):
     """
     Implements the Quantum Phase Estimation algorithm.

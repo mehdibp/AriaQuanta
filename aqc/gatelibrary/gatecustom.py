@@ -1,10 +1,8 @@
-
-#import numpy as np
 from AriaQuanta._utils import np, swap_qubits, swap_qubits_density, is_unitary
 from AriaQuanta.aqc.gatelibrary import I
 
-#////////////////////////////////////////////////////////////////////////////////////
-#------------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------------------
 class GateCustom:
     def __init__(self, name, matrix, target_qubits):
 
@@ -97,12 +95,10 @@ class GateCustom:
 
         return density_matrix    
 
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class Custom(GateCustom):
     def __init__(self, matrix=I().matrix, target_qubits=0):
         this_matrix = matrix
         if is_unitary(this_matrix) == False:
             raise('Custom matrix is not unitary')    
         super().__init__(name='Custom', matrix=matrix, target_qubits=target_qubits)  
-               

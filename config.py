@@ -1,4 +1,3 @@
-
 import numpy as npnumpy
 try:
     import cupy as npcupy
@@ -7,9 +6,9 @@ except ImportError:
     cupy_exist = False
     npcupy = None
 
-#-----------------------------------------------------------------------------
-class Config:
 
+# -------------------------------------------------------------------------------------------
+class Config:
     hardware = 'Local'   # ['Local','HPC','Cloud','QPU']
     use_gpu = False 
 
@@ -26,21 +25,5 @@ class Config:
         Config.use_gpu = this_use_gpu
     
 def get_array_module(this_use_gpu):
-    if this_use_gpu and (npcupy is not None):
-        #print('Using CuPy')
-        return npcupy
-    else: 
-        #print('Using NumPy')
-        return npnumpy
-
-#-----------------------------------------------------------------------------
-
-#-----------------------------------------------------------------------------
-# print options
-#class PrintOptions():
-#
-#    def set_PrintOptions_defaults():
-#        PrintOptions.print_noise = False
-#        PrintOptions.print_measure = False
-#
-#PrintOptions.set_PrintOptions_defaults()  
+    if this_use_gpu and (npcupy is not None): return npcupy
+    else: return npnumpy

@@ -1,10 +1,8 @@
-
-
 from AriaQuanta.algorithms.eigen_solver import find_expectation_value
 from scipy.optimize import minimize
-import numpy as np
 
-#------------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------------------
 class VQE(): #, threshold, params_dict):
     def __init__(self, ansatz, hamiltonian, num_of_iter_measure, initial_values, optimizer='COBYLA'):
 
@@ -44,11 +42,3 @@ class VQE(): #, threshold, params_dict):
     def find_minimize(self):
         result = minimize(self.cost_function, self.initial_values, method=self.optimizer)
         return result
-
-#-------------------------------------------
-
-# optimization with scipy
-#from scipy.optimize import minimize
-#fun = lambda x: (x[0] - 1)**2 + (x[1] - 2.5)**2
-#result = minimize(fun, [0,1], method='COBYLA')
-#print(result.x)   

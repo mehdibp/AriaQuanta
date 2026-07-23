@@ -1,51 +1,9 @@
-
 import math
-from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit
-from AriaQuanta.aqc.gatelibrary import H, X, Z, CZ, CCX, CNZ
-#from AriaQuanta.aqc.visualization import CircuitVisualizer
+from AriaQuanta.aqc.gatelibrary import H, X, Z, CZ, CNZ
 
-#------------------------------------------------------------------------------------
-#def controlled_n_z(qc, controls, target):
-#    """
-#    Implements a Controlled-n Z Gate without ancilla qubits.
-#    
-#    Parameters:
-#        circuit: QuantumCircuit object.
-#        controls: List of control qubit indices.
-#        target: Index of the target qubit.
-#    """
-#    n = len(controls)
-#    
-#    if n == 1:
-#        # Base Case: CZ gate
-#        qc | CZ([controls[0]], [target])
-#
-#    elif n == 2:
-#        # Base Case: CCZ gate
-#        qc | H(target)
-#        qc | CCX([controls[0], controls[1], target])
-#        qc | H(target)
-#    else:
-#        # Step 1: Apply Hadamard to the target
-#        qc | H(target)
-#        
-#        # Step 2: Reduce to C^(n-1)X
-#        # Apply Toffoli gates iteratively to reduce control
-#        for i in range(n - 2):
-#            qc | CCX([controls[i], controls[i + 1], controls[i + 2]])
-#        
-#        # Step 3: Apply CCX on the final control and target
-#        qc | CCX([controls[-2], controls[-1], target])
-#        
-#        # Step 4: Undo the Toffoli gates
-#        for i in reversed(range(n - 2)):
-#            qc | CCX([controls[i], controls[i + 1], controls[i + 2]])
-#        
-#        # Step 5: Apply Hadamard to the target again
-#        qc | H(target)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 def oracle(qc, target_state):
     """
     Oracle for Grover's Algorithm.
@@ -80,7 +38,7 @@ def oracle(qc, target_state):
             qc | X(i)
 
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 def diffusion_operator(qc, n):
     """
     Implements the Grover Diffusion Operator.
@@ -117,7 +75,7 @@ def diffusion_operator(qc, n):
     for i in range(n):
         qc | H(i)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 def grover(n, target_state):
     """
     Implements Grover's Algorithm.

@@ -1,39 +1,27 @@
-
-#import numpy as np
-from AriaQuanta._utils import np, swap_qubits, is_unitary
 import math
-import numpy as np
+from AriaQuanta._utils import np
 
-#////////////////////////////////////////////////////////////////////////////////////
 
+# -------------------------------------------------------------------------------------------
 class GateSingleQubit:
     def __init__(self, name, matrix, target_qubits):
         
         self.name = name
         matrix = np.asarray(matrix)
         self.matrix = matrix
-
-        #target_qubits = [target_qubits]
-        #target_qubits = np.asarray(target_qubits, dtype=int).flatten()
         self.target_qubits = target_qubits
-        # print('----------')
-        # print("init, tq = ", target_qubits)
-        # print("init, self.target_qubits = ", self.target_qubits)
         #self.qubits = target_qubits.tolist()
 
     @property
     def target_qubits(self):
-        # print('target property')
         return self._target_qubits
 
     @property
     def qubits(self):
-        # print('qubits property')
         return self._qubits
 
     @target_qubits.setter
     def target_qubits(self, val):
-        # print('setter')
         _target_qubits = [val]
         _target_qubits = np.asarray(_target_qubits, dtype=int).flatten()        
         self._target_qubits = _target_qubits
@@ -59,10 +47,6 @@ class GateSingleQubit:
         full_matrix = np.kron(I1, self.matrix)
         full_matrix = np.kron(full_matrix, I2)
 
-        # reversed ordering as used in Qiskit
-        #full_matrix = np.kron(self.matrix, I1)
-        #full_matrix = np.kron(I2, full_matrix)
-        #         
         multistate = np.dot(full_matrix, multistate)
 
         return multistate
@@ -90,81 +74,77 @@ class GateSingleQubit:
 
         return density_matrix
 
-#////////////////////////////////////////////////////////////////////////////////////
-#///////// 1-Qubit Gates /////////
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
+
+# 1-Qubit Gates -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class I(GateSingleQubit):
     def __init__(self, target_qubits=0):
         matrix = np.eye(2)
         super().__init__(name='I', matrix=matrix, target_qubits=target_qubits)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class GlobalPhase(GateSingleQubit):
     def __init__(self, delta, target_qubits=0):
         self.delta = delta
         matrix = np.exp(+1j * delta) * np.eye(2)
         super().__init__(name='GPh', matrix=matrix, target_qubits=target_qubits)
 
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class X(GateSingleQubit):
     def __init__(self, target_qubits=0):
         matrix = np.array([[0, 1], [1, 0]])
         super().__init__(name='X', matrix=matrix, target_qubits=target_qubits)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class Y(GateSingleQubit):
     def __init__(self, target_qubits=0):
         matrix = np.array([[0, -1j], [1j, 0]])
         super().__init__(name='Y', matrix=matrix, target_qubits=target_qubits)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class Z(GateSingleQubit):
     def __init__(self, target_qubits=0):
         matrix = np.array([[1, 0], [0, -1]])
         super().__init__(name='Z', matrix=matrix, target_qubits=target_qubits)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class S(GateSingleQubit):
     def __init__(self, target_qubits=0):
         matrix = np.array([[1, 0], [0, 1j]])
         super().__init__(name='S', matrix=matrix, target_qubits=target_qubits)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class Sdg(GateSingleQubit):
     def __init__(self, target_qubits=0):
         matrix = np.array([[1, 0], [0, -1j]])
         super().__init__(name='S', matrix=matrix, target_qubits=target_qubits)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class Xsqrt(GateSingleQubit):
     def __init__(self, target_qubits=0):
         matrix = 1/2 * np.array([[1+1j, 1-1j], [1-1j, 1+1j]])
         super().__init__(name='Xsqrt', matrix=matrix, target_qubits=target_qubits)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class H(GateSingleQubit):
     def __init__(self, target_qubits=0):
         matrix = (1 / np.sqrt(2)) * np.array([[1, 1], [1, -1]])
         super().__init__(name='H', matrix=matrix, target_qubits=target_qubits)  
 
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class P(GateSingleQubit):
     def __init__(self, phi, target_qubits=0):
         self.phi = phi
         matrix = np.array([[1, 0], [0, np.exp(1j * phi)]])
         super().__init__(name='P', matrix=matrix, target_qubits=target_qubits)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class T(GateSingleQubit):
     def __init__(self, target_qubits=0):
         matrix = np.array([[1, 0], [0, np.exp(1j * np.pi / 4)]])
         super().__init__(name='T', matrix=matrix, target_qubits=target_qubits)
 
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class RX(GateSingleQubit):
     def __init__(self, theta, target_qubits=0):
         self._theta = theta
@@ -192,7 +172,7 @@ class RX(GateSingleQubit):
         self.matrix = matrix    
         return matrix  
     
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class RY(GateSingleQubit):
     def __init__(self, theta, target_qubits=0):
         self._theta = theta
@@ -216,7 +196,7 @@ class RY(GateSingleQubit):
         return matrix  
 
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class RZ(GateSingleQubit):
     def __init__(self, theta, target_qubits=0):
 
@@ -240,7 +220,7 @@ class RZ(GateSingleQubit):
         self.matrix = matrix    
         return matrix  
 
-#------------------------------------------------------------------------------------ 
+# ------------------------------------------------------------------------------------------- 
 class Rot(GateSingleQubit):
     def __init__(self, theta, phi, lambda_, target_qubits=0):
         self.theta = theta
@@ -251,11 +231,3 @@ class Rot(GateSingleQubit):
             [np.exp(1j * self.phi) * np.sin(self.theta / 2), np.exp(1j * (self.lambda_ + self.phi)) * np.cos(self.theta / 2)]
         ])
         super().__init__(name='Rot', matrix=matrix, target_qubits=target_qubits)   
-
-
-
-
-
-    
-     
-   

@@ -1,10 +1,7 @@
+from AriaQuanta._utils import np, swap_qubits, swap_qubits_density
 
-#import numpy as np
-from AriaQuanta._utils import np, swap_qubits, swap_qubits_density, is_unitary, reorder_state
-from AriaQuanta.aqc.gatelibrary import I
 
-#////////////////////////////////////////////////////////////////////////////////////
-#------------------------------------------------------------------------------------
+#  Control with an arbitray matrix - defined by the user
 class GateTripleQubit():
     def __init__(self, name, matrix, target_qubits):
 
@@ -95,11 +92,8 @@ class GateTripleQubit():
 
         return density_matrix
         
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
 
-#------------------------------------------------------------------------------------
-# Toffoli, controlled-controlled NOT
+# Toffoli, controlled-controlled NOT --------------------------------------------------------
 class CCXold(GateTripleQubit):
     def __init__(self, target_qubits_1=0, target_qubits_2=1, target_qubits_3=2):
         matrix = np.eye(8)
@@ -124,34 +118,8 @@ class CCXold(GateTripleQubit):
         self.matrix = matrix
         super().__init__(name='CCX', matrix=matrix, target_qubits=target_qubits)
 
-#------------------------------------------------------------------------------------
-# Margolus, simplified Toffoli
-#class RCCXold(GateTripleQubit):
-#    def __init__(self, target_qubits_1=0, target_qubits_2=1, target_qubits_3=2):
-#
-#        matrix = np.eye(8, dtype=complex)
-#
-#        #------------------------       
-#        # based on q0 as control
-#        # Qiskit representation
-#        #matrix[3,7] = -1j
-#        #matrix[3,3] = 0
-#        #matrix[5,5] = -1
-#        #matrix[7,7] = 0 
-#
-#        #------------------------
-#        matrix[6,7] = -1j/np.sqrt(2)
-#        matrix[7,6] = -1j/np.sqrt(2)
-#        matrix[6,6] = 1/np.sqrt(2)
-#        matrix[7,7] = 1/np.sqrt(2)
-#
-#        target_qubits = [target_qubits_1, target_qubits_2, target_qubits_3]
-#
-#        self.matrix=matrix
-#        super().__init__(name='RCCX', matrix=matrix, target_qubits=target_qubits)   
 
-#------------------------------------------------------------------------------------
-# Fredkin, controlled swap
+# Fredkin, controlled swap ------------------------------------------------------------------
 class CSWAPold(GateTripleQubit):
     def __init__(self, target_qubits_1=0, target_qubits_2=1, target_qubits_3=2):
         matrix = np.eye(8)

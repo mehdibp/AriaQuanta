@@ -1,7 +1,6 @@
+from AriaQuanta._utils import np
 
-import numpy as np
-#from AriaQuanta.config import PrintOptions
-
+# -------------------------------------------------------------------------------------------
 class Measure:
     def __init__(self, name, qubits, clbits, resize):
         
@@ -9,10 +8,6 @@ class Measure:
         self.qubits = qubits
         self.clbits = clbits
         self.resize = resize
-
-        #self.qc_values = []
-        #self.c_values_dict = {}
-        #self.q_values_dict = {}
 
         self.clbit_values_dict = {}
         self.qubit_values_dict = {}
@@ -24,7 +19,6 @@ class Measure:
         # Measures qubit 1 into classical bit 0 and qubit 2 into classical bit 1          
 
         #---------------------------------------
-
         state = multistate
         num_of_states = np.shape(state)[0]
         num_of_qubits = int(np.log2(num_of_states)) 
@@ -45,32 +39,6 @@ class Measure:
 
         #---------------------------------------
         # save measurement outputs
-        #if self.clbits == []:
-        #    for i in self.qubits:
-        #        self.clbits = ['c'+str(i)]
-        #q_bits = self.qubits
-        #clbits = self.clbits  
-
-        #qc_values = []
-        #c_values_dict = {}
-        #q_values_dict = {}
-        # qc_values: {'q_bit': value}
-        # c_values_dict: {'c0': 1, 'c1': 1}
-        #for i in range(len(q_bits)):
-        #    q_bits_i = q_bits[i]
-        #    meausrement_i = measurement_state[q_bits_i]
-        #    c_value = int(meausrement_i)
-        #    qc_values.append((q_bits_i, str(clbits[i]), c_value))
-        #    q_values_dict[str(q_bits_i)] = c_value
-        #    c_values_dict[str(clbits[i])] = c_value
-
-        #self.qc_values = qc_values
-        #self.c_values_dict = c_values_dict
-        #self.q_values_dict = q_values_dict
-        # print(qc_values, c_values_dict)
-
-        #---------------------------------------
-        # save measurement outputs
 
         qubits = self.qubits
         clbits = self.clbits
@@ -85,17 +53,8 @@ class Measure:
             self.qubit_values_dict['q' + str(qubits_i)] = meausrement_i
             self.clbit_values_dict[str(clbits_i)] = meausrement_i   
 
-        #if PrintOptions.print_measure:
-            #keys = ['q' + str(item) for item in self.qubits]
-            #print("\nmeasurement on qubits {} are: {}".format(keys, self.clbit_values_dict)) 
-
         #---------------------------------------
         # find the remaining elements of statevector
-
-        #select_indices = []
-        #for i in range(len(qc_values)):
-        #    indices = [index for index, string in enumerate(all_states) if string[qc_values[i][0]] == str(qc_values[i][2])]
-        #    select_indices.append(indices)
 
         for i in range(len(qubits)):
             select_indices=[]
@@ -103,9 +62,6 @@ class Measure:
                 if all_states[j][qubits[i]] == self.qubit_values_dict['q' + str(qubits[i])]:
                     select_indices.append(j)
             all_states=[all_states[x] for x in select_indices]  
-        
-        #if PrintOptions.print_measure:
-        #    print("\nmeasurement output:", all_states)      
 
         last_indices=[]
         for item in all_states:
@@ -131,13 +87,13 @@ class Measure:
         return multistate
         
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class MeasureQubit(Measure):
     def __init__(self, qubits, clbits=None):    
         self.resize=False  
         super().__init__(name='MeasureQubit', qubits=qubits, clbits=clbits, resize=self.resize)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class MeasureQubitResize(Measure):
     def __init__(self, qubits, clbits=None):  
         self.resize=True 

@@ -1,7 +1,7 @@
 
 
+# -------------------------------------------------------------------------------------------
 class Operations:
-
     def __init__(self, name, conditions, operation_gate):
         
         self.name = name  
@@ -16,8 +16,7 @@ class Operations:
 
         return multistate
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class If_cbit(Operations):
     def __init__(self, conditions, operation_gate):
         super().__init__(name='If_cbit', conditions=conditions, operation_gate=operation_gate)
-    

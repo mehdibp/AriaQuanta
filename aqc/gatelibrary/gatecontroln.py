@@ -1,17 +1,9 @@
+from AriaQuanta._utils import np
 
-#import numpy as np
-from AriaQuanta._utils import np, swap_qubits, swap_qubits_density, is_unitary
 
-#////////////////////////////////////////////////////////////////////////////////////
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class GateControlN:
     def __init__(self, name, matrix, target_qubits):
-
-        # control_qubits: List of qubits that control the gate (now only one qubit)
-        # target_qubits: List of target qubits on which the gate will be applied if controls are satisfied
-        # base_gate: The gate to apply on the target qubits (e.g., X, H, etc.)
-
-        #name = f"C{'C' * (len(control_qubits) - 1)}{base_gate.name}"
 
         self.name = name
         matrix = np.asarray(matrix)
@@ -27,8 +19,6 @@ class GateControlN:
         
         target_qubits = self.target_qubits
         matrix = self.matrix
-        
-        #print("matrix = ", matrix)
 
         #-----------------------------------------------------
         num_of_target_qubits = np.shape(target_qubits)[0]
@@ -88,7 +78,7 @@ class GateControlN:
         return density_matrix  
     """    
     
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class CNZ(GateControlN):
     def __init__(self, num_of_qubits, target_qubits=0):
         size = 2 ** num_of_qubits
@@ -102,4 +92,4 @@ class CNZ(GateControlN):
         # *** note! now works only for the target to be the last qubit***
         matrix[size-1, size-1] = -1
 
-        super().__init__(name='CNZ', matrix=matrix, target_qubits=target_qubits)       
+        super().__init__(name='CNZ', matrix=matrix, target_qubits=target_qubits)

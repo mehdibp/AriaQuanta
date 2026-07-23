@@ -1,12 +1,8 @@
-
-#import numpy as np
-
-from AriaQuanta.aqc.gatelibrary import X, Z, P, S, I, SWAP
-
 from AriaQuanta._utils import np, swap_qubits, swap_qubits_density, is_unitary
+from AriaQuanta.aqc.gatelibrary import X, Z, S, I, SWAP
 
-#////////////////////////////////////////////////////////////////////////////////////
-#------------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------------------
 class GateControl:
     def __init__(self, name, base_matrix, control_qubits, target_qubits):
 
@@ -43,16 +39,7 @@ class GateControl:
         num_of_target_qubits = np.shape(target_qubits)[0]
 
         #-----------------------------------------------------
-        # dim_of_controls = 2 * num_of_control_qubits # control_quibits is only 1 qubit at the moment (2 states)
-        #dim_of_targets = np.shape(base_matrix)[0]
-        #dim = 2 * dim_of_targets
-        #control_matrix = np.identity(dim, dtype=complex) 
-
-        #for k1 in range(dim_of_targets, dim):
-        #    for k2 in range(dim_of_targets, dim):
-        #        control_matrix[k1, k2] = base_matrix[k1 - dim_of_targets, k2 - dim_of_targets]
-        control_matrix = self.matrix        
-        #print("\ncontrol_matrix:", control_matrix)        
+        control_matrix = self.matrix
 
         #-----------------------------------------------------
         # update: corrected result for target_qubit=0
@@ -78,9 +65,6 @@ class GateControl:
             I2 = 1  
 
         full_matrix = np.kron(control_matrix, I2)
-
-        #if use_gpu_global:
-        #    full_matrix = np.asnumpy(full_matrix)
 
         multistate_swaped = np.dot(full_matrix, multistate_swaped)
 
@@ -142,10 +126,9 @@ class GateControl:
         density_matrix = swap_qubits_density(control_qubits[0], 0, num_of_qubits, density_matrix_swaped)
 
         return density_matrix 
+              
 
-#////////////////////////////////////////////////////////////////////////////////////                
-
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class CX(GateControl):
     def __init__(self, control_qubits=0, target_qubits=1): 
         #matrix_qiskit = np.array([[1, 0, 0, 0],
@@ -160,7 +143,7 @@ class CX(GateControl):
         self.matrix = matrix_books        
         super().__init__(name='CX', base_matrix=X().matrix, control_qubits=control_qubits, target_qubits=target_qubits) 
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class CZ(GateControl):
     def __init__(self, control_qubits=0, target_qubits=1): 
         matrix = np.array([[1, 0, 0, 0],
@@ -170,7 +153,7 @@ class CZ(GateControl):
         self.matrix = matrix          
         super().__init__(name='CZ', base_matrix=Z().matrix, control_qubits=control_qubits, target_qubits=target_qubits)  
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class CP(GateControl):
     def __init__(self, phi, control_qubits=0, target_qubits=1): 
         self._phi = phi 
@@ -193,7 +176,7 @@ class CP(GateControl):
         self.matrix = matrix    
         return matrix  
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class CS(GateControl):
     def __init__(self, control_qubits=0, target_qubits=1): 
         matrix = np.array([[1, 0, 0, 0],
@@ -202,8 +185,8 @@ class CS(GateControl):
                   [0, 0, 0, 1j]])
         self.matrix = matrix         
         super().__init__(name='CS', base_matrix=S().matrix, control_qubits=control_qubits, target_qubits=target_qubits)
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------------------
 class CSX(GateControl):
     def __init__(self, control_qubits=0, target_qubits=1): 
         this_matrix = [[np.exp(+1j * np.pi / 4), np.exp(-1j * np.pi / 4)], 
@@ -215,8 +198,7 @@ class CSX(GateControl):
         self.matrix = matrix          
         super().__init__(name='CSX', base_matrix=this_matrix, control_qubits=control_qubits, target_qubits=target_qubits)             
 
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class CRX(GateControl):
     def __init__(self, theta, control_qubits=0, target_qubits=1): 
         self._theta = theta
@@ -245,9 +227,8 @@ class CRX(GateControl):
         self.matrix = matrix    
         return matrix  
     
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
-# Toffoli, controlled-controlled NOT
+
+# Toffoli, controlled-controlled NOT --------------------------------------------------------
 class CCX(GateControl):
     def __init__(self, qubits_1=0, qubits_2=1, qubits_3=2):
         matrix = np.eye(8)
@@ -271,8 +252,7 @@ class CCX(GateControl):
         self.matrix = matrix
         super().__init__(name='CCX', base_matrix=CX().matrix, control_qubits=controls, target_qubits=targets)   
 
-#------------------------------------------------------------------------------------
-# Fredkin, controlled swap
+# Fredkin, controlled swap ------------------------------------------------------------------
 class CSWAP(GateControl):
     def __init__(self, qubits_1=0, qubits_2=1, qubits_3=2):
         matrix = np.eye(8)
@@ -295,9 +275,8 @@ class CSWAP(GateControl):
         self.matrix = matrix
         super().__init__(name='CSWAP', base_matrix=SWAP().matrix, control_qubits=controls, target_qubits=targets)                   
 
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
-# Control with an arbitray matrix - defined by the user
+
+# Control with an arbitray matrix - defined by the user -------------------------------------
 class CU(GateControl):
     def __init__(self, base_matrix, control_qubits=0, target_qubits=1):
         self.base_matrix=base_matrix                

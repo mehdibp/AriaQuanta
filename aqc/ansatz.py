@@ -1,15 +1,10 @@
-
+from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit
-from AriaQuanta.aqc.gatelibrary import RY, RZ, CX, CRX, RXX, RYY, H
-import numpy as np
+from AriaQuanta.aqc.gatelibrary import RY, RZ, CX, CRX, RXX, RYY
 
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
-# parametrized circuit
 
+# parametrized circuit ----------------------------------------------------------------------
 class Ansatz(Circuit):
-
-    #def __init__(self, num_of_qubits, num_of_clbits=0, num_of_ancilla=0, list_of_qubits=[]):
 
     def __init__(self, num_of_qubits, params_names, num_of_clbits=0, num_of_ancilla=0, list_of_qubits=[]):
 
@@ -56,8 +51,7 @@ class Ansatz(Circuit):
         else:
             self.gates.append(gate)
 
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 def EfficientSU2Ansatz():
     params_names = []
     for i in range(16):
@@ -71,10 +65,8 @@ def EfficientSU2Ansatz():
             myansatz | CX(0,1)  
     return myansatz                  
 
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 def H2Ansatz():
-    
     ansatz = Ansatz(4, ['theta0', 'theta1', 'theta2'])
 
     ansatz | CRX('theta0', 0, 1)
@@ -88,52 +80,3 @@ def H2Ansatz():
     ansatz | CX(1, 2)
 
     return ansatz
-
-#------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------
-# def H2DoubleAnsatz():
-#    
-#    ansatz = Ansatz(2, ['theta'])
-#
-#    ansatz | H(0) | H(1)
-#    ansatz | CX(0, 1)
-#    ansatz | RZ('theta', 1)
-#    ansatz | CX(0, 1)
-#
-#    return ansatz
-
-"""
-
-def UCCSDAnsatz():
-    def __init__(self, num_qubits):
-        super().__init__(num_qubits)
-
-    def build_uccsd_ansatz(self, theta_singles, theta_doubles):
-        #
-        #Constructs the UCCSD ansatz for H2 using a Trotterized Pauli exponentiation.
-        #- theta_singles: Parameters for single excitations.
-        #- theta_doubles: Parameters for double excitations.
-        
-        assert len(theta_singles) == 2, "UCCSD for H2 requires 2 parameters for single excitations"
-        assert len(theta_doubles) == 1, "UCCSD for H2 requires 1 parameter for double excitations"
-        
-        # Apply single excitations (UCCS)
-        self | ("CRX", theta_singles[0], 0, 1)  # Excitation between qubits 0 and 1
-        self | ("CRX", theta_singles[1], 2, 3)  # Excitation between qubits 2 and 3
-        
-        # Apply double excitations (UCCD)
-        self | ("RXX", theta_doubles[0], 0, 2)  # Simulating a two-electron excitation
-        self | ("RYY", theta_doubles[0], 1, 3)  
-        
-        # Entangling layers to capture correlations
-        self | ("CX", 0, 1)
-        self | ("CX", 2, 3)
-        self | ("CX", 1, 2)
-
-# Example instantiation:
-uccsd_ansatz = UCCSDAnsatz(4)  # 4 qubits for Jordan-Wigner mapping
-initial_theta_singles = [0.1, 0.2]  # Initial guesses for single excitations
-initial_theta_doubles = [0.3]       # Initial guess for double excitation
-uccsd_ansatz.build_uccsd_ansatz(initial_theta_singles, initial_theta_doubles)
-
-"""

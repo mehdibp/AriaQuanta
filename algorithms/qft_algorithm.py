@@ -1,7 +1,8 @@
-
 import math
 from AriaQuanta.aqc.gatelibrary import H, CP, SWAP
 
+
+# -------------------------------------------------------------------------------------------
 def qft(qc, qubits):
     """
     Implements the Quantum Fourier Transform on a set of qubits.

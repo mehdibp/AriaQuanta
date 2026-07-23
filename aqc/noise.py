@@ -1,13 +1,9 @@
-
-#import numpy as np
-from AriaQuanta._utils import np, swap_qubits, is_unitary
+from AriaQuanta._utils import np
 from AriaQuanta.aqc.gatelibrary import X, Y, Z
-#from AriaQuanta.config import PrintOptions
 
-#////////////////////////////////////////////////////////////////////////////////////
 
+# -------------------------------------------------------------------------------------------
 class NoiseClass:
-
     def __init__(self, name, noise_gate, probability, target_qubits):
         
         self.name = name
@@ -27,13 +23,8 @@ class NoiseClass:
 
             this_gate = self.noise_gate
             multistate = this_gate(q).apply(num_of_qubits, multistate)
-
-            #if PrintOptions.print_noise:
-            #    print("\nprobability was satistied, and {} noise was applied to qubit {}" .format(self.name, q))
         else:
             pass
-            #if PrintOptions.print_noise:
-            #    print("\nprobability was not satistied, and {} noise was not applied" .format(self.name))
 
 
         return multistate
@@ -41,19 +32,19 @@ class NoiseClass:
     def apply_noise_density(self, num_of_qubits, density_matrix):
         return 1
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class BitFlipNoise(NoiseClass):
     def __init__(self, probability=1.0, target_qubits=-1):
         noise_gate = X
         super().__init__(name='BitFlip', noise_gate=noise_gate, probability=probability, target_qubits=target_qubits)
     
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class PhaseFlipNoise(NoiseClass):
     def __init__(self, probability=1.0, target_qubits=-1):
         noise_gate = Z
         super().__init__(name='PhaseFlip', noise_gate=noise_gate, probability=probability, target_qubits=target_qubits)
 
-#------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 class DepolarizingNoise(NoiseClass):
     def __init__(self, probability=1.0, target_qubits=-1):
         #choose_gate = np.random.choice(['XGate','YGate','ZGate'])
