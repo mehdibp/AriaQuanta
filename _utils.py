@@ -1,8 +1,10 @@
+from typing import TYPE_CHECKING
 from AriaQuanta.config import Config, get_array_module
 
 
 # -------------------------------------------------------------------------------------------
-np = get_array_module(Config.use_gpu)
+if TYPE_CHECKING: import numpy as np
+else: np = get_array_module(Config.use_gpu)
 
 # -------------------------------------------------------------------------------------------
 def is_unitary(matrix):
@@ -71,11 +73,9 @@ def reorder_state(state):
     num_of_states = np.shape(state)[0]
     num_of_qubits = int(np.log2(num_of_states)) 
 
-    bin_format = '#0' + str(num_of_qubits + 2) + 'b' # #05b
-    all_states = [format(x, bin_format)[2:] for x in range(num_of_states)]
+    bin_format = '#0' + str(num_of_qubits + 2) + 'b'                        # #05b (b stands for binay)
+    all_states = [format(x, bin_format)[2:] for x in range(num_of_states)]  # Convert to binary format
     all_states = [x[::-1] for x in all_states]
-    #print(all_states) # ['00', '10', '01', '11']
-    #                    [q1=0 q0=0, q1=1 q0=0, q1=0 q0=1, q1=1 q0=1]  
-    new_indices = [int(x, 2) for x in all_states]
+    new_indices = [int(x, 2) for x in all_states]                           # binary to decimal
     reordered_state = state[new_indices]
     return reordered_state

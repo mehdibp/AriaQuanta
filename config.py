@@ -24,6 +24,7 @@ class Config:
 
         Config.use_gpu = this_use_gpu
     
+# -------------------------------------------------------------------------------------------
 def get_array_module(this_use_gpu):
     if this_use_gpu and (npcupy is not None): return npcupy
     else: return npnumpy
