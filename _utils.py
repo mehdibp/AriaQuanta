@@ -19,21 +19,14 @@ def swap_qubits(idx1_, idx2_, num_of_qubits, multistate):
     indices_swaped = []
     size = 2 ** num_of_qubits
     
-    #---------------------------------
+    # ------------------------------------------------------------
     for i in range(size):
-
         state_str = format(i, '0{}b'.format(num_of_qubits))
-        #print('-----------')
-        #print(state_str)
 
         new_state_str = state_str[:idx1] + state_str[idx2] + state_str[idx1+1:]
         new_state_str = new_state_str[:idx2] + state_str[idx1] + new_state_str[idx2+1:]
-
-        #print(new_state_str)
         
         index_swaped = int(new_state_str, 2)
-
-        #print(index_original, index_swaped)
         indices_swaped.append(index_swaped)
 
     multistate_swaped = multistate[indices_swaped]
@@ -45,21 +38,15 @@ def swap_qubits_density(idx1, idx2, num_of_qubits, density_matrix):
     indices_swaped = []
     size = 2 ** num_of_qubits
     
-    #---------------------------------
+    # ------------------------------------------------------------
     for i in range(size):
 
         state_str = format(i, '0{}b'.format(num_of_qubits))
-        #print('-----------')
-        #print(state_str)
 
         new_state_str = state_str[:idx1] + state_str[idx2] + state_str[idx1+1:]
         new_state_str = new_state_str[:idx2] + state_str[idx1] + new_state_str[idx2+1:]
-
-        #print(new_state_str)
         
         index_swaped = int(new_state_str, 2)
-
-        #print(index_original, index_swaped)
         indices_swaped.append(index_swaped)
 
     density_matrix_swaped = density_matrix
@@ -79,3 +66,4 @@ def reorder_state(state):
     new_indices = [int(x, 2) for x in all_states]                           # binary to decimal
     reordered_state = state[new_indices]
     return reordered_state
+

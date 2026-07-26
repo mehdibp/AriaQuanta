@@ -1,5 +1,4 @@
-
-#init, AriaQuanta.aqc
+# init, AriaQuanta.aqc
 
 from .qubit import (
     Qubit,
@@ -9,7 +8,7 @@ from .qubit import (
 
 from .circuit import (
     Circuit, 
-    sv_reorder_qubits, 
+    # sv_reorder_qubits, 
     sv_to_probabilty, 
     to_gate,
 )

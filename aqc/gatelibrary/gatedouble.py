@@ -1,310 +1,244 @@
+from typing import Optional, Union
+from scipy.linalg import expm
+
 from AriaQuanta._utils import np, swap_qubits, swap_qubits_density
+from AriaQuanta.aqc.gatelibrary.gatebase import GateBase
 
 
 # -------------------------------------------------------------------------------------------
-class GateDoubleQubit:
-    def __init__(self, name, matrix, target_qubits):
-        
-        self.name = name
-        matrix = np.asarray(matrix)
-        self.matrix = matrix
+class GateDoubleQubit(GateBase):
+    _num_target_qubits = 2
 
-        target_qubits = [target_qubits]
-        target_qubits = np.asarray(target_qubits, dtype=int).flatten()
-        self.target_qubits = target_qubits
-    
-        self.qubits = target_qubits.tolist()
+    # ------------------------------------------------------------
+    def _full_matrix(self, num_of_qubits: int) -> np.ndarray:
+        if self.matrix is None:
+            raise ValueError(
+                "Gate '{}' has a symbolic parameter (e.g. an angle given as a string placeholder for circuit diagrams) "
+                "and therefore no numeric matrix to apply. Bind it to a numeric value first.".format(self.name)
+            )
 
-    #----------------------------------------------
-    def apply(self, num_of_qubits, multistate):
-        
+        remaining = num_of_qubits - self._num_target_qubits
+        if remaining > 0: I2 = np.identity(2 ** remaining, dtype=complex)
+        else: I2 = 1
+
+        return np.kron(self.matrix, I2)
+
+    # ------------------------------------------------------------
+    def apply(self, num_of_qubits: int, multistate: np.ndarray) -> np.ndarray:
         target_qubits = self.target_qubits
-        matrix = self.matrix
 
-        multistate_swaped = swap_qubits(0, target_qubits[0], num_of_qubits, multistate)
-        multistate_swaped = swap_qubits(1, target_qubits[1], num_of_qubits, multistate_swaped)  # it was multistate- is that correct?
+        multistate_swapped = swap_qubits(0, target_qubits[0], num_of_qubits, multistate)
+        multistate_swapped = swap_qubits(1, target_qubits[1], num_of_qubits, multistate_swapped)
 
-        if (num_of_qubits - len(target_qubits)) > 0:
-            dim = 2 ** (num_of_qubits - len(target_qubits))
-            I2 = np.identity(dim, dtype=complex)
-        else:
-            I2 = 1         
-    
-        full_matrix = np.kron(matrix, I2)       
-        # reverse ordering as used by Qiskit
-        #full_matrix = np.kron(I2, matrix)
+        full_matrix = self._full_matrix(num_of_qubits)
+        multistate_swapped = np.dot(full_matrix, multistate_swapped)
 
-        multistate_swaped = np.dot(full_matrix, multistate_swaped)
-
-        multistate_swaped = swap_qubits(target_qubits[1], 1, num_of_qubits, multistate_swaped)
-        multistate = swap_qubits(target_qubits[0], 0, num_of_qubits, multistate_swaped)
+        multistate_swapped = swap_qubits(target_qubits[1], 1, num_of_qubits, multistate_swapped)
+        multistate = swap_qubits(target_qubits[0], 0, num_of_qubits, multistate_swapped)
 
         return multistate
-    
-    def apply_density(self, num_of_qubits, density_matrix):
-        
+
+    # ------------------------------------------------------------
+    def apply_density(self, num_of_qubits: int, density_matrix: np.ndarray) -> np.ndarray:
         target_qubits = self.target_qubits
-        matrix = self.matrix
 
-        density_matrix_swaped = swap_qubits_density(0, target_qubits[0], num_of_qubits, density_matrix)
-        density_matrix_swaped = swap_qubits_density(1, target_qubits[1], num_of_qubits, density_matrix_swaped)
+        density_matrix_swapped = swap_qubits_density(0, target_qubits[0], num_of_qubits, density_matrix)
+        density_matrix_swapped = swap_qubits_density(1, target_qubits[1], num_of_qubits, density_matrix_swapped)
 
-        if (num_of_qubits - len(target_qubits)) > 0:
-            dim = 2 ** (num_of_qubits - len(target_qubits))
-            I2 = np.identity(dim, dtype=complex)
-        else:
-            I2 = 1         
-    
-        full_matrix = np.kron(matrix, I2)
-        
-        density_matrix_swaped = full_matrix @ density_matrix_swaped @ np.conj(full_matrix.T)
+        full_matrix = self._full_matrix(num_of_qubits)
+        density_matrix_swapped = full_matrix @ density_matrix_swapped @ np.conj(full_matrix.T)
 
-        density_matrix_swaped = swap_qubits_density(target_qubits[1], 1, num_of_qubits, density_matrix_swaped)
-        density_matrix = swap_qubits_density(target_qubits[0], 0, num_of_qubits, density_matrix_swaped)
+        density_matrix_swapped = swap_qubits_density(target_qubits[1], 1, num_of_qubits, density_matrix_swapped)
+        density_matrix = swap_qubits_density(target_qubits[0], 0, num_of_qubits, density_matrix_swapped)
 
         return density_matrix
-    
+
 
 # 2-Qubit Gates -----------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------
 class SWAP(GateDoubleQubit):
-    def __init__(self, target_qubits_1=0, target_qubits_2=1):
+    def __init__(self, target_qubits_1: int=0, target_qubits_2: int=1) -> None:
         matrix = [[1, 0, 0, 0],
                   [0, 0, 1, 0],
                   [0, 1, 0, 0],
                   [0, 0, 0, 1]]
-        target_qubits = [target_qubits_1, target_qubits_2]
-        target_qubits = sorted(target_qubits)
-        super().__init__(name='SWAP', matrix=matrix, target_qubits=target_qubits)  
+        target_qubits = sorted([target_qubits_1, target_qubits_2])
+        super().__init__(name='SWAP', matrix=matrix, target_qubits=target_qubits)
 
 # -------------------------------------------------------------------------------------------
 class ISWAP(GateDoubleQubit):
-    def __init__(self, target_qubits_1=0, target_qubits_2=1):
+    def __init__(self, target_qubits_1: int=0, target_qubits_2: int=1) -> None:
         matrix = [[1, 0, 0, 0],
                   [0, 0, +1j, 0],
                   [0, +1j, 0, 0],
                   [0, 0, 0, 1]]
-        target_qubits = [target_qubits_1, target_qubits_2]   
-        target_qubits = sorted(target_qubits)
-        super().__init__(name='ISWAP', matrix=matrix, target_qubits=target_qubits) 
+        target_qubits = sorted([target_qubits_1, target_qubits_2])
+        super().__init__(name='ISWAP', matrix=matrix, target_qubits=target_qubits)
 
 # -------------------------------------------------------------------------------------------
 class SWAPsqrt(GateDoubleQubit):
-    def __init__(self, target_qubits_1=0, target_qubits_2=1):
+    def __init__(self, target_qubits_1: int=0, target_qubits_2: int=1) -> None:
         matrix = [[1, 0, 0, 0],
                   [0, 1 / 2 * (1 + 1j), 1 / 2 * (1 - 1j), 0],
                   [0, 1 / 2 * (1 - 1j), 1 / 2 * (1 + 1j), 0],
                   [0, 0, 0, 1]]
-        target_qubits = [target_qubits_1, target_qubits_2] 
-        target_qubits = sorted(target_qubits)
+        target_qubits = sorted([target_qubits_1, target_qubits_2])
         super().__init__(name='SWAPsqrt', matrix=matrix, target_qubits=target_qubits)
 
 # -------------------------------------------------------------------------------------------
-#class ISWAPsqrt(GateDoubleQubit):
-#    def __init__(self, target_qubits_1=0, target_qubits_2=1):
-#        matrix = [[1, 0, 0, 0],
-#                  [0, 1 / np.sqrt(2), +1j / np.sqrt(2), 0],
-#                  [0, +1j / np.sqrt(2), 1 / np.sqrt(2), 0],
-#                  [0, 0, 0, 1]]
-#        target_qubits = [target_qubits_1, target_qubits_2] 
-#        target_qubits = sorted(target_qubits)
-#        super().__init__(name='ISWAPsqrt', matrix=matrix, target_qubits=target_qubits)
+class ISWAPsqrt(GateDoubleQubit):
+    def __init__(self, target_qubits_1: int=0, target_qubits_2: int=1) -> None:
+        matrix = [[1, 0, 0, 0],
+                  [0, 1 / np.sqrt(2), +1j / np.sqrt(2), 0],
+                  [0, +1j / np.sqrt(2), 1 / np.sqrt(2), 0],
+                  [0, 0, 0, 1]]
+        target_qubits = sorted([target_qubits_1, target_qubits_2])
+        super().__init__(name='ISWAPsqrt', matrix=matrix, target_qubits=target_qubits)
 
 # -------------------------------------------------------------------------------------------
 class SWAPalpha(GateDoubleQubit):
-    def __init__(self, alpha, target_qubits_1=0, target_qubits_2=1):
+    def __init__(self, alpha: float, target_qubits_1: int=0, target_qubits_2: int=1) -> None:
         self.alpha = alpha
         matrix = [[1, 0, 0, 0],
                   [0, 1 / 2 * (1 + np.exp(+1j * np.pi * alpha)), 1 / 2 * (1 - np.exp(+1j * np.pi * alpha)), 0],
                   [0, 1 / 2 * (1 - np.exp(+1j * np.pi * alpha)), 1 / 2 * (1 + np.exp(+1j * np.pi * alpha)), 0],
                   [0, 0, 0, 1]]
-        target_qubits = [target_qubits_1, target_qubits_2] 
-        target_qubits = sorted(target_qubits)
-        super().__init__(name='SWAPalpha', matrix=matrix, target_qubits=target_qubits)  
+        target_qubits = sorted([target_qubits_1, target_qubits_2])
+        super().__init__(name='SWAPalpha', matrix=matrix, target_qubits=target_qubits)
 
 
 # -------------------------------------------------------------------------------------------
-class RXX(GateDoubleQubit):
-    def __init__(self, phi, target_qubits_1=0, target_qubits_2=1):
-        self._phi = phi
+class _AxisRotationGate(GateDoubleQubit):
+    _gate_name: str = ''    # set by each subclass
+
+    def __init__(self, phi: Union[float, str], target_qubits_1: int=0, target_qubits_2: int=1) -> None:
+        self._param = phi
         matrix = self.update_matrix()
-        self.matrix = matrix
-
-        target_qubits = [target_qubits_1, target_qubits_2] 
-        target_qubits = sorted(target_qubits)
-        super().__init__(name='RXX', matrix=matrix, target_qubits=target_qubits) 
-
+        target_qubits = sorted([target_qubits_1, target_qubits_2])
+        super().__init__(name=self._gate_name, matrix=matrix, target_qubits=target_qubits)
+    
     @property
-    def phi(self):
-        return self._phi
+    def phi(self) -> Union[float, str]:
+        return self._param
+    
+    
+    def _matrix_for_param(self, value: float) -> np.ndarray:
+        raise NotImplementedError
 
-    #@theta.setter
-    #def theta(self, value):
-    #    self._theta = value
-    #    self.matrix = self.update_matrix()  # Update matrix manually
+    def update_matrix(self) -> Optional[np.ndarray]:
+        if isinstance(self._param, str): matrix = None
+        else: matrix = self._matrix_for_param(self._param)
 
-    def update_matrix(self):
-        if isinstance(self.phi, str):
-            matrix = r'RXX ($\phi$)'
-        else:    
-            matrix = [[np.cos(self.phi / 2), 0, 0, -1j * np.sin(self.phi / 2)],
-                  [0, np.cos(self.phi / 2), -1j * np.sin(self.phi / 2), 0],
-                  [0, -1j * np.sin(self.phi / 2), np.cos(self.phi / 2), 0],
-                  [-1j * np.sin(self.phi / 2), 0, 0, np.cos(self.phi / 2)]]
-        self.matrix = matrix    
-        return matrix 
-
-# -------------------------------------------------------------------------------------------
-class RYY(GateDoubleQubit):
-    def __init__(self, phi, target_qubits_1=0, target_qubits_2=1):
-        self._phi = phi
-        matrix = self.update_matrix()
         self.matrix = matrix
-
-        target_qubits = [target_qubits_1, target_qubits_2] 
-        target_qubits = sorted(target_qubits)
-        super().__init__(name='RYY', matrix=matrix, target_qubits=target_qubits) 
-
-    @property
-    def phi(self):
-        return self._phi
-
-    #@theta.setter
-    #def theta(self, value):
-    #    self._theta = value
-    #    self.matrix = self.update_matrix()  # Update matrix manually
-
-    def update_matrix(self):
-        if isinstance(self.phi, str):
-            matrix = r'RYY ($\phi$)'
-        else:    
-            matrix = [[np.cos(self.phi / 2), 0, 0, +1j * np.sin(self.phi / 2)],
-                  [0, np.cos(self.phi / 2), -1j * np.sin(self.phi / 2), 0],
-                  [0, -1j * np.sin(self.phi / 2), np.cos(self.phi / 2), 0],
-                  [+1j * np.sin(self.phi / 2), 0, 0, np.cos(self.phi / 2)]]
-        self.matrix = matrix    
-        return matrix 
+        return matrix
 
 # -------------------------------------------------------------------------------------------
-class RZZ(GateDoubleQubit):
-    def __init__(self, phi, target_qubits_1=0, target_qubits_2=1):
-        self.phi = phi
-        matrix = [[np.exp(-1j * phi / 2), 0, 0, 0],
-                  [0, np.exp(+1j * phi / 2), 0, 0],
-                  [0, 0, np.exp(+1j * phi / 2), 0],
-                  [0, 0, 0, np.exp(-1j * phi / 2)]]
-        target_qubits = [target_qubits_1, target_qubits_2]
-        target_qubits = sorted(target_qubits)
-        super().__init__(name='RZZ', matrix=matrix, target_qubits=target_qubits) 
-        
+class RXX(_AxisRotationGate):
+    _gate_name = 'RXX'
+
+    def _matrix_for_param(self, phi: float) -> np.ndarray:
+        return [[np.cos(phi / 2), 0, 0, -1j * np.sin(phi / 2)],
+                [0, np.cos(phi / 2), -1j * np.sin(phi / 2), 0],
+                [0, -1j * np.sin(phi / 2), np.cos(phi / 2), 0],
+                [-1j * np.sin(phi / 2), 0, 0, np.cos(phi / 2)]]
+
 # -------------------------------------------------------------------------------------------
-class RXY(GateDoubleQubit):
-    def __init__(self, phi, target_qubits_1=0, target_qubits_2=1):
-        self.phi = phi
-        matrix = [[1, 0, 0, 0],
-                  [0, np.cos(phi / 2), -1j * np.sin(phi / 2), 0],
-                  [0, -1j * np.sin(phi / 2), np.cos(phi / 2), 0],
-                  [0, 0, 0, 1]]
-        target_qubits = [target_qubits_1, target_qubits_2] 
-        target_qubits = sorted(target_qubits)
-        super().__init__(name='RXY', matrix=matrix, target_qubits=target_qubits) 
+class RYY(_AxisRotationGate):
+    _gate_name = 'RYY'
+
+    def _matrix_for_param(self, phi: float) -> np.ndarray:
+        return [[np.cos(phi / 2), 0, 0, +1j * np.sin(phi / 2)],
+                [0, np.cos(phi / 2), -1j * np.sin(phi / 2), 0],
+                [0, -1j * np.sin(phi / 2), np.cos(phi / 2), 0],
+                [+1j * np.sin(phi / 2), 0, 0, np.cos(phi / 2)]]
+
+# -------------------------------------------------------------------------------------------
+class RZZ(_AxisRotationGate):
+    _gate_name = 'RZZ'
+
+    def _matrix_for_param(self, phi: float) -> np.ndarray:
+        return [[np.exp(-1j * phi / 2), 0, 0, 0],
+                [0, np.exp(+1j * phi / 2), 0, 0],
+                [0, 0, np.exp(+1j * phi / 2), 0],
+                [0, 0, 0, np.exp(-1j * phi / 2)]]
+
+# -------------------------------------------------------------------------------------------
+class RXY(_AxisRotationGate):
+    _gate_name = 'RXY'
+
+    def _matrix_for_param(self, phi: float) -> np.ndarray:
+        return [[1, 0, 0, 0],
+                [0, np.cos(phi / 2), -1j * np.sin(phi / 2), 0],
+                [0, -1j * np.sin(phi / 2), np.cos(phi / 2), 0],
+                [0, 0, 0, 1]]
 
 
 # -------------------------------------------------------------------------------------------
 class Barenco(GateDoubleQubit):
-    def __init__(self, alpha, phi, theta, target_qubits_1=0, target_qubits_2=1):
+    def __init__(self, alpha: float, phi: float, theta: float, target_qubits_1: int=0, target_qubits_2: int=1) -> None:
         self.alpha = alpha
         self.phi = phi
         self.theta = theta
         matrix = [[1, 0, 0, 0],
                   [0, 1, 0, 0],
                   [0, 0, np.exp(+1j * alpha) * np.cos(theta), -1j * np.exp(+1j * (alpha - phi)) * np.sin(theta)],
-                  [0, 0, -1j * np.exp(+1j * (alpha + phi)) * np.sin(theta), np.exp(+1j * alpha) * np.cos(theta)]
-                  ]
-        target_qubits = [target_qubits_1, target_qubits_2] 
-        target_qubits = sorted(target_qubits)
-        super().__init__(name='Barenco', matrix=matrix, target_qubits=target_qubits) 
+                  [0, 0, -1j * np.exp(+1j * (alpha + phi)) * np.sin(theta), np.exp(+1j * alpha) * np.cos(theta)]]
+        target_qubits = sorted([target_qubits_1, target_qubits_2])
+        super().__init__(name='Barenco', matrix=matrix, target_qubits=target_qubits)
 
 # -------------------------------------------------------------------------------------------
 class Berkeley(GateDoubleQubit):
-    def __init__(self, target_qubits_1=0, target_qubits_2=1):
-        matrix = [[np.cos(np.pi / 8), 0, 0, +1j * np.sin(np.pi / 8)],
-                  [0, np.cos(3 * np.pi / 8), +1j * np.sin(3 * np.pi / 8), 0],
-                  [0, +1j * np.sin(np.pi / 8), np.cos(np.pi / 8), 0],
-                  [+1j * np.sin(np.pi / 8), 0, 0, np.cos(np.pi / 8)]
-                  ]
-        target_qubits = [target_qubits_1, target_qubits_2] 
-        target_qubits = sorted(target_qubits)
-        super().__init__(name='Berkeley', matrix=matrix, target_qubits=target_qubits) 
+    def __init__(self, target_qubits_1: int=0, target_qubits_2: int=1) -> None:
+        a = np.pi / 8
+        b = 3 * np.pi / 8
+        
+        matrix = [[np.cos(a), 0, 0, +1j * np.sin(a)],
+                  [0, np.cos(b), +1j * np.sin(b), 0],
+                  [0, +1j * np.sin(b), np.cos(b), 0],
+                  [+1j * np.sin(a), 0, 0, np.cos(a)]]
+        target_qubits = sorted([target_qubits_1, target_qubits_2])
+        super().__init__(name='Berkeley', matrix=matrix, target_qubits=target_qubits)
 
 # -------------------------------------------------------------------------------------------
 class Canonical(GateDoubleQubit):
-    def __init__(self, a, b, c, target_qubits_1=0, target_qubits_2=1):
-        self.a = a
-        self.b = b
-        self.c = c
+    def __init__(self, a: float, b: float, c: float, target_qubits_1: int=0, target_qubits_2: int=1) -> None:
         matrix = [[np.exp(+1j * c) * np.cos(a - b), 0, 0, +1j * np.exp(+1j * c) * np.sin(a - b)],
                   [0, np.exp(-1j * c) * np.cos(a + b), +1j * np.exp(-1j * c) * np.sin(a + b), 0],
                   [0, +1j * np.exp(-1j * c) * np.sin(a + b), np.exp(-1j * c) * np.cos(a + b), 0],
-                  [+1j * np.exp(+1j * c) * np.sin(a - b), 0, 0, np.exp(+1j * c) * np.cos(a - b)]
-                  ]
-        target_qubits = [target_qubits_1, target_qubits_2] 
-        target_qubits = sorted(target_qubits)
-        super().__init__(name='Canonical', matrix=matrix, target_qubits=target_qubits) 
+                  [+1j * np.exp(+1j * c) * np.sin(a - b), 0, 0, np.exp(+1j * c) * np.cos(a - b)]]
+        target_qubits = sorted([target_qubits_1, target_qubits_2])
+        super().__init__(name='Canonical', matrix=matrix, target_qubits=target_qubits)
 
 # -------------------------------------------------------------------------------------------
 class Givens(GateDoubleQubit):
-    def __init__(self, theta, target_qubits_1=0, target_qubits_2=1):
+    def __init__(self, theta: float, target_qubits_1: int=0, target_qubits_2: int=1) -> None:
         self.theta = theta
         matrix = [[1, 0, 0, 0],
                   [0, np.cos(theta), -np.sin(theta), 0],
                   [0, np.sin(theta), np.cos(theta), 0],
-                  [0, 0, 0, 1]
-                  ]   
-        target_qubits = [target_qubits_1, target_qubits_2]
-        target_qubits = sorted(target_qubits)
-        super().__init__(name='Givens', matrix=matrix, target_qubits=target_qubits) 
+                  [0, 0, 0, 1]]
+        target_qubits = sorted([target_qubits_1, target_qubits_2])
+        super().__init__(name='Givens', matrix=matrix, target_qubits=target_qubits)
 
 # -------------------------------------------------------------------------------------------
 class Magic(GateDoubleQubit):
-    def __init__(self, target_qubits_1=0, target_qubits_2=1):
+    def __init__(self, target_qubits_1: int=0, target_qubits_2: int=1) -> None:
         array = np.array([[1, +1j, 0, 0],
                           [0, 0, +1j, 1],
                           [0, 0, +1j, -1],
                           [1, -1j, 0, 0]])
-        matrix = 1 / np.sqrt(2) * array    
-        target_qubits = [target_qubits_1, target_qubits_2]
-        target_qubits = sorted(target_qubits)
-        super().__init__(name='Magic', matrix=matrix, target_qubits=target_qubits)     
+        matrix = 1 / np.sqrt(2) * array
+        target_qubits = sorted([target_qubits_1, target_qubits_2])
+        super().__init__(name='Magic', matrix=matrix, target_qubits=target_qubits)
 
 # -------------------------------------------------------------------------------------------
-class Ruccsd(GateDoubleQubit):
-    def __init__(self, theta, target_qubits_1=0, target_qubits_2=1):
+class Ruccsd(_AxisRotationGate, GateDoubleQubit):
+    _gate_name = 'Ruccsd'
 
-        self._theta = theta
-        matrix = self.update_matrix()
-        self.matrix = matrix
-        target_qubits = [target_qubits_1, target_qubits_2]
-        target_qubits = sorted(target_qubits)
+    def _matrix_for_param(self, theta: float) -> np.ndarray:
+        x = np.array([[0, 1], [1, 0]], dtype=complex)
+        y = np.array([[0, -1j], [1j, 0]], dtype=complex)
+        mat = np.kron(x, y)
+        return expm(-1j * theta * mat)
 
-        super().__init__(name='Ruccsd', matrix=matrix, target_qubits=target_qubits) 
 
-    @property
-    def theta(self):
-        return self._theta
-
-    def update_matrix(self):
-        if isinstance(self.theta, str):
-            matrix = r'Ruccsd ($\theta$)'
-        else:
-            #matrix = np.array([
-            #    [np.exp(-1j * self.theta / 2), 0.0],
-            #    [0.0, np.exp(1j * self.theta / 2)]  
-            #])
-            x = np.array([[0, 1], [1, 0]])
-            y = np.array([[0, -1j], [1j, 0]])
-            mat = np.kron(x, y)
-            matrix = np.exp(-1j * self.theta * mat)
-        self.matrix = matrix
-        return matrix
-    

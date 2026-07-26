@@ -6,7 +6,7 @@ from AriaQuanta.aqc.gatelibrary import RY, RZ, CX, CRX, RXX, RYY
 # parametrized circuit ----------------------------------------------------------------------
 class Ansatz(Circuit):
 
-    def __init__(self, num_of_qubits, params_names, num_of_clbits=0, num_of_ancilla=0, list_of_qubits=[]):
+    def __init__(self, num_of_qubits, params_names, num_of_clbits=0, num_of_ancilla=0, list_of_qubits=None):
 
         #  #ansatz = Ansatz(2, ['theta1'])
         #  #ansatz | H(1) | RX('theta1',0) | H(0) | CX(0,1) 
