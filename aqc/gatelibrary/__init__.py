@@ -41,12 +41,12 @@ from .gatedouble import *
 """
 
 #------------------------------------------------------------------------------------
-from .arxived_gatetriple import *
-"""
-    GateTripleQubit,
-    CCXold,
-    CSWAPold,
-"""
+# from .arxived_gatetriple import *
+# """
+#     GateTripleQubit,
+#     CCXold,
+#     CSWAPold,
+# """
 
 #------------------------------------------------------------------------------------
 from .gatecustom import *

@@ -10,13 +10,14 @@ class GateBase:
 
         expected_dim = ( 2**self._num_target_qubits if self._num_target_qubits is not None else None )
 
-        matrix = np.asarray(matrix, dtype=complex)
-        if matrix.ndim != 2 or matrix.shape[0] != matrix.shape[1]:
-            raise ValueError( "Gate '{}' matrix must be square, got shape {}.".format(name, matrix.shape) )
-        if expected_dim is not None and matrix.shape[0] != expected_dim:
-            raise ValueError( "Gate '{0}' matrix must be {1}x{1} for a {2}-qubit gate, got shape {3}.".format(name, expected_dim, int(np.log2(expected_dim)), matrix.shape) )
-        if not np.all(np.isfinite(matrix)):
-            raise ValueError("Gate '{}' matrix contains NaN or Inf values.".format(name))
+        if matrix is not None:
+            matrix = np.asarray(matrix, dtype=complex)
+            if matrix.ndim != 2 or matrix.shape[0] != matrix.shape[1]:
+                raise ValueError( "Gate '{}' matrix must be square, got shape {}.".format(name, matrix.shape) )
+            if expected_dim is not None and matrix.shape[0] != expected_dim:
+                raise ValueError( "Gate '{0}' matrix must be {1}x{1} for a {2}-qubit gate, got shape {3}.".format(name, expected_dim, int(np.log2(expected_dim)), matrix.shape) )
+            if not np.all(np.isfinite(matrix)):
+                raise ValueError("Gate '{}' matrix contains NaN or Inf values.".format(name))
 
 
         self.name = name

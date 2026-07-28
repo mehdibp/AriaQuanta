@@ -1,306 +1,281 @@
+from typing import List, Optional, Union
+
 from AriaQuanta._utils import np, swap_qubits, swap_qubits_density, is_unitary
+from AriaQuanta.aqc.gatelibrary.gatebase import GateBase
 from AriaQuanta.aqc.gatelibrary import X, Z, S, I, SWAP
 
 
 # -------------------------------------------------------------------------------------------
-class GateControl:
-    def __init__(self, name, base_matrix, control_qubits, target_qubits):
+class GateControl(GateBase):
+    _num_target_qubits: Optional[int] = None
 
-        # control_qubits: List of qubits that control the gate (now only one qubit)
-        # target_qubits: List of target qubits on which the gate will be applied if controls are satisfied
-        # base_gate: The gate to apply on the target qubits (e.g., X, H, etc.)
+    def __init__(self, name: str, matrix: Optional[np.ndarray], base_matrix: Optional[np.ndarray],
+                 control_qubits: Union[int, List[int]], target_qubits: Union[int, List[int]]):
 
-        #name = f"C{'C' * (len(control_qubits) - 1)}{base_gate.name}"
+        self.base_matrix = np.asarray(base_matrix)
+        self.control_qubits = np.atleast_1d(np.asarray(control_qubits, dtype=int)).flatten()
+        super().__init__(name=name, matrix=matrix, target_qubits=target_qubits)
 
-        self.name = name
-        base_matrix = np.asarray(base_matrix)
-        self.base_matrix = base_matrix
 
-        control_qubits = [control_qubits]
-        control_qubits = np.asarray(control_qubits, dtype=int).flatten()
+    # ------------------------------------------------------------
+    @property
+    def qubits(self) -> List[int]:
+        return self.control_qubits.tolist() + self._qubits
 
-        target_qubits = [target_qubits]
-        target_qubits = np.asarray(target_qubits, dtype=int).flatten()
 
-        self.control_qubits = control_qubits
-        self.target_qubits = target_qubits
+    # ------------------------------------------------------------
+    def _full_matrix(self, num_of_qubits: int) -> np.ndarray:
+        if self.matrix is None:
+            raise ValueError(
+                "Gate '{}' has a symbolic parameter (e.g. an angle given as a string placeholder for circuit diagrams) "
+                "and therefore no numeric matrix to apply. Bind it to a numeric value first.".format(self.name)
+            )
 
-        qubits = np.concatenate((control_qubits, target_qubits))
-        qubits = np.asarray(qubits, dtype=int).flatten()   
-        self.qubits = qubits.tolist()
-    
-    def apply(self, num_of_qubits, multistate):
+        num_of_control_qubits = np.shape(self.control_qubits)[0]
+        num_of_target_qubits  = np.shape(self.target_qubits )[0]
 
-        base_matrix = self.base_matrix
+        remaining = num_of_qubits - num_of_control_qubits - num_of_target_qubits
+        if remaining > 0: I2 = np.identity(2 ** remaining, dtype=complex)
+        else: I2 = 1
+
+        return np.kron(self.matrix, I2)
+
+    # ------------------------------------------------------------
+    def apply(self, num_of_qubits: int, multistate: np.ndarray) -> np.ndarray:
         control_qubits = self.control_qubits
         target_qubits = self.target_qubits
-
-        num_of_control_qubits = np.shape(control_qubits)[0]
         num_of_target_qubits = np.shape(target_qubits)[0]
 
-        #-----------------------------------------------------
-        control_matrix = self.matrix
-
-        #-----------------------------------------------------
-        # update: corrected result for target_qubit=0
         # shift all the qubits to one ID higher, and increase the size of system to n+1
-        one_state = np.array([[1], [0]], dtype=complex)
-        multistate = np.kron(one_state,multistate)
+        one_state  = np.array([[1], [0]], dtype=complex)
+        multistate = np.kron(one_state, multistate)
         control_qubits = control_qubits + 1
-        target_qubits = target_qubits + 1
-        num_of_control_qubits = np.shape(control_qubits)[0]
-        num_of_target_qubits = np.shape(target_qubits)[0]
-        num_of_qubits += 1    
+        target_qubits  = target_qubits  + 1
+        num_of_qubits += 1
 
-        #-----------------------------------------------------
-        multistate_swaped = swap_qubits(0, control_qubits[0], num_of_qubits, multistate)
+        multistate_swapped = swap_qubits(0, control_qubits[0], num_of_qubits, multistate)
+        for k1 in range(1, num_of_target_qubits + 1):
+            multistate_swapped = swap_qubits(k1, target_qubits[k1 - 1], num_of_qubits, multistate_swapped)
+        
+        full_matrix = self._full_matrix(num_of_qubits)
+        multistate_swapped = np.dot(full_matrix, multistate_swapped)
 
-        for k1 in range(1, num_of_target_qubits+1):
-            multistate_swaped = swap_qubits(k1, target_qubits[k1 - 1], num_of_qubits, multistate_swaped)
+        for k1 in reversed(range(1, num_of_target_qubits + 1)):
+            multistate_swapped = swap_qubits(target_qubits[k1 - 1], k1, num_of_qubits, multistate_swapped)
+        multistate = swap_qubits(control_qubits[0], 0, num_of_qubits, multistate_swapped)
 
-        if (num_of_qubits - num_of_control_qubits - num_of_target_qubits) > 0:
-            dim = 2 ** (num_of_qubits - num_of_control_qubits - num_of_target_qubits)
-            I2 = np.identity(dim, dtype=complex)
-        else:
-            I2 = 1  
-
-        full_matrix = np.kron(control_matrix, I2)
-
-        multistate_swaped = np.dot(full_matrix, multistate_swaped)
-
-        for k1 in reversed(range(1, num_of_target_qubits+1)):
-            multistate_swaped = swap_qubits(target_qubits[k1 - 1], k1, num_of_qubits, multistate_swaped)
-
-        multistate = swap_qubits(control_qubits[0], 0, num_of_qubits, multistate_swaped)
-
-        #-----------------------------------------------------
-        #-----------------------------------------------------
-        # update: corrected result for target_qubit=0
-        # shift all the qubits to their original ID, and the size of system from n+1 to n
-        multistate = multistate[:int(np.size(multistate)/2)]
+        # shift qubit IDs back down and drop the ancilla, n+1 -> n qubits
+        multistate = multistate[: int(np.size(multistate) / 2)]
 
         return multistate
-    
-    def apply_density(self, num_of_qubits, density_matrix):
 
-        #base_matrix = self.base_matrix
+    # ------------------------------------------------------------
+    def apply_density(self, num_of_qubits: int, density_matrix: np.ndarray) -> np.ndarray:
         control_qubits = self.control_qubits
-        target_qubits = self.target_qubits
-
-        num_of_control_qubits = np.shape(control_qubits)[0]
+        target_qubits  = self.target_qubits
         num_of_target_qubits = np.shape(target_qubits)[0]
 
-        #-----------------------------------------------------
-        # dim_of_controls = 2 * num_of_control_qubits # control_quibits is only 1 qubit at the moment (2 states)
-        # dim_of_targets = np.shape(base_matrix)[0]
-        # dim = 2 * dim_of_targets
-        # control_matrix = np.identity(dim, dtype=complex) 
+        density_matrix_swapped = swap_qubits_density(0, control_qubits[0], num_of_qubits, density_matrix)
+        for k1 in range(1, num_of_target_qubits + 1):
+            density_matrix_swapped = swap_qubits_density(k1, target_qubits[k1 - 1], num_of_qubits, density_matrix_swapped)
 
-        # for k1 in range(dim_of_targets, dim):
-        #    for k2 in range(dim_of_targets, dim):
-        #        control_matrix[k1, k2] = base_matrix[k1 - dim_of_targets, k2 - dim_of_targets]
-        control_matrix = self.matrix
-        #-----------------------------------------------------
+        full_matrix = self._full_matrix(num_of_qubits)
+        density_matrix_swapped = full_matrix @ density_matrix_swapped @ np.conj(full_matrix.T)
 
-        density_matrix_swaped = swap_qubits_density(0, control_qubits[0], num_of_qubits, density_matrix)
+        for k1 in reversed(range(1, num_of_target_qubits + 1)):
+            density_matrix_swapped = swap_qubits_density(target_qubits[k1 - 1], k1, num_of_qubits, density_matrix_swapped)
+        density_matrix = swap_qubits_density(control_qubits[0], 0, num_of_qubits, density_matrix_swapped)
 
-        for k1 in range(1, num_of_target_qubits+1):
-            density_matrix_swaped = swap_qubits_density(k1, target_qubits[k1 - 1], num_of_qubits, density_matrix_swaped)
-
-        if (num_of_qubits - num_of_control_qubits - num_of_target_qubits) > 0:
-            dim = 2 ** (num_of_qubits - num_of_control_qubits - num_of_target_qubits)
-            I2 = np.identity(dim, dtype=complex)
-        else:
-            I2 = 1  
-
-        full_matrix = np.kron(control_matrix, I2)
-
-        #if use_gpu_global:
-        #    full_matrix = np.asnumpy(full_matrix)
-
-        density_matrix_swaped = full_matrix @ density_matrix_swaped @ np.conj(full_matrix.T)
-
-        for k1 in reversed(range(1, num_of_target_qubits+1)):
-            density_matrix_swaped = swap_qubits_density(target_qubits[k1 - 1], k1, num_of_qubits, density_matrix_swaped)
-
-        density_matrix = swap_qubits_density(control_qubits[0], 0, num_of_qubits, density_matrix_swaped)
-
-        return density_matrix 
-              
+        return density_matrix
+    
 
 # -------------------------------------------------------------------------------------------
 class CX(GateControl):
-    def __init__(self, control_qubits=0, target_qubits=1): 
-        #matrix_qiskit = np.array([[1, 0, 0, 0],
-        #          [0, 0, 0, 1],
-        #          [0, 0, 1, 0],
-        #          [0, 1, 0, 0]])
+    def __init__(self, control_qubits: int=0, target_qubits: int=1) -> None:
         matrix_books = np.array([[1, 0, 0, 0],
-                  [0, 1, 0, 0],
-                  [0, 0, 0, 1],
-                  [0, 0, 1, 0]])       
-        #self.control_matrix = matrix_books
-        self.matrix = matrix_books        
-        super().__init__(name='CX', base_matrix=X().matrix, control_qubits=control_qubits, target_qubits=target_qubits) 
+                                  [0, 1, 0, 0],
+                                  [0, 0, 0, 1],
+                                  [0, 0, 1, 0]])
+        super().__init__(name='CX', matrix=matrix_books, base_matrix=X().matrix, control_qubits=control_qubits, target_qubits=target_qubits)
 
 # -------------------------------------------------------------------------------------------
 class CZ(GateControl):
-    def __init__(self, control_qubits=0, target_qubits=1): 
+    def __init__(self, control_qubits: int=0, target_qubits: int=1) -> None:
         matrix = np.array([[1, 0, 0, 0],
-                  [0, 1, 0, 0],
-                  [0, 0, 1, 0],
-                  [0, 0, 0, -1]])
-        self.matrix = matrix          
-        super().__init__(name='CZ', base_matrix=Z().matrix, control_qubits=control_qubits, target_qubits=target_qubits)  
-
-# -------------------------------------------------------------------------------------------
-class CP(GateControl):
-    def __init__(self, phi, control_qubits=0, target_qubits=1): 
-        self._phi = phi 
-        matrix = self.update_matrix()
-        self.matrix = matrix         
-        super().__init__(name='CP', base_matrix=self.matrix, control_qubits=control_qubits, target_qubits=target_qubits)
-
-    @property
-    def phi(self):
-        return self._phi
-
-    def update_matrix(self):
-        if isinstance(self.phi, str):
-            matrix = r'CP ($\phi$)'
-        else:    
-            matrix = np.array([[1, 0, 0, 0],
-                    [0, 1, 0, 0],
-                    [0, 0, 1, 0],
-                    [0, 0, 0, np.exp(1j * self.phi)]])
-        self.matrix = matrix    
-        return matrix  
+                            [0, 1, 0, 0],
+                            [0, 0, 1, 0],
+                            [0, 0, 0, -1]])
+        super().__init__(name='CZ', matrix=matrix, base_matrix=Z().matrix, control_qubits=control_qubits, target_qubits=target_qubits)
 
 # -------------------------------------------------------------------------------------------
 class CS(GateControl):
-    def __init__(self, control_qubits=0, target_qubits=1): 
+    def __init__(self, control_qubits: int=0, target_qubits: int=1) -> None:
         matrix = np.array([[1, 0, 0, 0],
-                  [0, 1, 0, 0],
-                  [0, 0, 1, 0],
-                  [0, 0, 0, 1j]])
-        self.matrix = matrix         
-        super().__init__(name='CS', base_matrix=S().matrix, control_qubits=control_qubits, target_qubits=target_qubits)
+                            [0, 1, 0, 0],
+                            [0, 0, 1, 0],
+                            [0, 0, 0, 1j]])
+        super().__init__(name='CS', matrix=matrix, base_matrix=S().matrix, control_qubits=control_qubits, target_qubits=target_qubits)
 
 # -------------------------------------------------------------------------------------------
 class CSX(GateControl):
-    def __init__(self, control_qubits=0, target_qubits=1): 
-        this_matrix = [[np.exp(+1j * np.pi / 4), np.exp(-1j * np.pi / 4)], 
+    def __init__(self, control_qubits: int=0, target_qubits: int=1) -> None:
+        base_matrix = [[np.exp(+1j * np.pi / 4), np.exp(-1j * np.pi / 4)],
                        [np.exp(-1j * np.pi / 4), np.exp(+1j * np.pi / 4)]]
         matrix = [[1, 0, 0, 0],
                   [0, 1, 0, 0],
-                  [0, 0, (1 + 1j)/2, (1 - 1j)/2],
-                  [0, 0, (1 - 1j)/2, (1 + 1j)/2]] 
-        self.matrix = matrix          
-        super().__init__(name='CSX', base_matrix=this_matrix, control_qubits=control_qubits, target_qubits=target_qubits)             
+                  [0, 0, (1 + 1j) / 2, (1 - 1j) / 2],
+                  [0, 0, (1 - 1j) / 2, (1 + 1j) / 2]]
+        super().__init__(name='CSX', matrix=matrix, base_matrix=base_matrix, control_qubits=control_qubits, target_qubits=target_qubits)
+
 
 # -------------------------------------------------------------------------------------------
-class CRX(GateControl):
-    def __init__(self, theta, control_qubits=0, target_qubits=1): 
-        self._theta = theta
-        this_matrix = "np.array([[np.cos(self.theta / 2), -1j * np.sin(self.theta / 2)],[-1j * np.sin(self.theta / 2), np.cos(self.theta / 2)]    ])"
+class _AxisRotationGate(GateControl):
+    _gate_name: str = ''    # set by each subclass
+
+    def __init__(self, param: Union[float, str], control_qubits: int=0, target_qubits: int=1) -> None:
+        self._param = param
         matrix = self.update_matrix()
-        self.matrix = matrix
-        super().__init__(name='CRX', base_matrix=this_matrix, control_qubits=control_qubits, target_qubits=target_qubits) 
+        base_matrix = None if isinstance(param, str) else self._base_matrix_for_param(param)
+        super().__init__(name=self._gate_name, matrix=matrix, base_matrix=base_matrix,
+                          control_qubits=control_qubits, target_qubits=target_qubits)
 
     @property
-    def theta(self):
-        return self._theta
+    def phi(self) -> Union[float, str]:
+        return self._param
 
-    #@theta.setter
-    #def theta(self, value):
-    #    self._theta = value
-    #    self.matrix = self.update_matrix()  # Update matrix manually
 
-    def update_matrix(self):
-        if isinstance(self.theta, str):
-            matrix = r'CRX ($\theta$)'
-        else:    
-            matrix = [[1, 0, 0, 0],
-                  [0, 1, 0, 0],
-                  [0, 0, np.cos(self.theta / 2), -1j * np.sin(self.theta / 2)],
-                  [0, 0, -1j * np.sin(self.theta / 2), np.cos(self.theta / 2)]] 
-        self.matrix = matrix    
-        return matrix  
+    def _base_matrix_for_param(self, value: float) -> np.ndarray:
+        raise NotImplementedError
+
+    def update_matrix(self) -> Optional[np.ndarray]:
+        if isinstance(self._param, str): matrix = None
+        else:
+            base = self._base_matrix_for_param(self._param)
+            matrix = np.eye(4, dtype=complex)
+            matrix[2:, 2:] = base
+
+        self.matrix = matrix
+        return matrix
+
+# -------------------------------------------------------------------------------------------
+class CP(_AxisRotationGate):
+    _gate_name = 'CP'
+
+    def __init__(self, phi: Union[float, str], control_qubits: int=0, target_qubits: int=1) -> None:
+        super().__init__(param=phi, control_qubits=control_qubits, target_qubits=target_qubits)
+
+    def _base_matrix_for_param(self, phi: float) -> np.ndarray:
+        return np.array([[1, 0], [0, np.exp(1j * phi)]])
     
+# -------------------------------------------------------------------------------------------
+class CRX(_AxisRotationGate):
+    _gate_name = 'CRX'
+
+    def __init__(self, theta: Union[float, str], control_qubits: int=0, target_qubits: int=1) -> None:
+        super().__init__(param=theta, control_qubits=control_qubits, target_qubits=target_qubits)
+
+    def _base_matrix_for_param(self, theta: float) -> np.ndarray:
+        return np.array([
+            [np.cos(theta / 2), -1j * np.sin(theta / 2)],
+            [-1j * np.sin(theta / 2), np.cos(theta / 2)]
+        ])
+
+# -------------------------------------------------------------------------------------------
+class CRY(_AxisRotationGate):
+    _gate_name = 'CRY'
+
+    def __init__(self, theta: Union[float, str], control_qubits: int=0, target_qubits: int=1) -> None:
+        super().__init__(param=theta, control_qubits=control_qubits, target_qubits=target_qubits)
+
+    def _base_matrix_for_param(self, theta: float) -> np.ndarray:
+        return np.array([
+            [np.cos(theta / 2), -np.sin(theta / 2)],
+            [np.sin(theta / 2), np.cos(theta / 2)]
+        ])
+
+# -------------------------------------------------------------------------------------------
+class CRZ(_AxisRotationGate):
+    _gate_name = 'CRZ'
+
+    def __init__(self, theta: Union[float, str], control_qubits: int=0, target_qubits: int=1) -> None:
+        super().__init__(param=theta, control_qubits=control_qubits, target_qubits=target_qubits)
+
+    def _base_matrix_for_param(self, theta: float) -> np.ndarray:
+        return np.array([
+            [np.exp(-1j * theta / 2), 0.0],
+            [0.0, np.exp(1j * theta / 2)]
+        ])
+
 
 # Toffoli, controlled-controlled NOT --------------------------------------------------------
 class CCX(GateControl):
-    def __init__(self, qubits_1=0, qubits_2=1, qubits_3=2):
+    def __init__(self, qubits_1: int=0, qubits_2: int=1, qubits_3: int=2) -> None:
         matrix = np.eye(8)
 
-        #------------------------
-        # based on q0 as control
-        # Qiskit representation
-        #matrix[3,7] = 1
-        #matrix[7,3] = 1
-        #matrix[3,3] = 0
-        #matrix[7,7] = 0 
-        
-        #------------------------
-        matrix[6,7] = 1
-        matrix[7,6] = 1
-        matrix[6,6] = 0
-        matrix[7,7] = 0   
+        # ------------------------
+        # based on q0 as control | Qiskit representation
+        # matrix[3,7] = 1
+        # matrix[7,3] = 1
+        # matrix[3,3] = 0
+        # matrix[7,7] = 0
+
+        matrix[6, 7] = 1
+        matrix[7, 6] = 1
+        matrix[6, 6] = 0
+        matrix[7, 7] = 0
 
         controls = [qubits_1]
         targets = sorted([qubits_2, qubits_3])
-        self.matrix = matrix
-        super().__init__(name='CCX', base_matrix=CX().matrix, control_qubits=controls, target_qubits=targets)   
+        super().__init__(name='CCX', matrix=matrix, base_matrix=CX().matrix, control_qubits=controls, target_qubits=targets)
 
 # Fredkin, controlled swap ------------------------------------------------------------------
 class CSWAP(GateControl):
-    def __init__(self, qubits_1=0, qubits_2=1, qubits_3=2):
+    def __init__(self, qubits_1: int=0, qubits_2: int=1, qubits_3: int=2) -> None:
         matrix = np.eye(8)
-        #------------------------
-        # based on q0 as control
-        # Qiskit representation        
+        # ------------------------
+        # based on q0 as control | Qiskit representation
         #matrix[3,3] = 0
         #matrix[5,5] = 0
         #matrix[3,5] = 1
         #matrix[5,3] = 1
 
-        #------------------------
-        matrix[5,6] = 1
-        matrix[6,5] = 1
-        matrix[5,5] = 0
-        matrix[6,6] = 0
+        matrix[5, 6] = 1
+        matrix[6, 5] = 1
+        matrix[5, 5] = 0
+        matrix[6, 6] = 0
 
         controls = [qubits_1]
         targets = sorted([qubits_2, qubits_3])
-        self.matrix = matrix
-        super().__init__(name='CSWAP', base_matrix=SWAP().matrix, control_qubits=controls, target_qubits=targets)                   
-
+        super().__init__(name='CSWAP', matrix=matrix, base_matrix=SWAP().matrix, control_qubits=controls, target_qubits=targets)
 
 # Control with an arbitray matrix - defined by the user -------------------------------------
 class CU(GateControl):
-    def __init__(self, base_matrix, control_qubits=0, target_qubits=1):
-        self.base_matrix=base_matrix                
-        CU.namedraw='CU'
-        if is_unitary(base_matrix) == False:
-            raise('Custom matrix is not unitary')
-        
+    def __init__(self, base_matrix: np.ndarray, control_qubits: int=0, target_qubits: Union[int, List[int]]=1) -> None:
+        base_matrix = np.asarray(base_matrix, dtype=complex)
+
+        if not is_unitary(base_matrix):
+            raise ValueError('Custom matrix is not unitary')
+
+        target_qubits_arr = np.atleast_1d(np.asarray(target_qubits, dtype=int)).flatten()
+        expected_base_dim = 2 ** target_qubits_arr.size
+        if base_matrix.shape[0] != expected_base_dim:
+            raise ValueError(
+                "CU's base_matrix must be {0}x{0} to match {1} target qubit(s), got shape {2}."
+                .format(expected_base_dim, target_qubits_arr.size, base_matrix.shape)
+            )
+
         num_of_I_matrices = int(np.log2(base_matrix.shape[0]))
         zero = np.array([[1], [0]])
-        one = np.array([[0], [1]])
+        one  = np.array([[0], [1]])
         zero_zero = np.kron(zero, zero.T)
-        one_one = np.kron(one, one.T)
-        I_matrix = I().matrix
-        
-        # based on books (and not qiskit)
-        # ∣0⟩⟨0∣⊗I+∣1⟩⟨1∣⊗G
+        one_one   = np.kron(one, one.T)
+        I_matrix  = I().matrix
+
+        # based on books (and not qiskit) --> |0><0| (x) I + |1><1| (x) G
         cmatrix_1 = np.kron(zero_zero, I_matrix)
-        for i in range(num_of_I_matrices-1):
+        for _ in range(num_of_I_matrices - 1):
             cmatrix_1 = np.kron(cmatrix_1, I_matrix)
-
         cmatrix_2 = np.kron(one_one, base_matrix)
-
         controlled_matrix = cmatrix_1 + cmatrix_2
 
-        self.matrix = controlled_matrix
-    
-        super().__init__(name='CU', base_matrix=base_matrix, control_qubits=control_qubits, target_qubits=target_qubits)                  
+        super().__init__(name='CU', matrix=controlled_matrix, base_matrix=base_matrix, control_qubits=control_qubits, target_qubits=target_qubits)

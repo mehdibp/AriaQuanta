@@ -1,104 +1,69 @@
-from AriaQuanta._utils import np, swap_qubits, swap_qubits_density, is_unitary
+from typing import List, Optional, Union
+
+from AriaQuanta._utils import np, is_unitary
+from AriaQuanta.aqc.gatelibrary.gatebase import GateBase
 from AriaQuanta.aqc.gatelibrary import I
 
 
 # -------------------------------------------------------------------------------------------
-class GateCustom:
-    def __init__(self, name, matrix, target_qubits):
+class GateCustom(GateBase):
+    _num_target_qubits: Optional[int] = None
 
-        # control_qubits: List of qubits that control the gate (now only one qubit)
-        # target_qubits: List of target qubits on which the gate will be applied if controls are satisfied
-        # base_gate: The gate to apply on the target qubits (e.g., X, H, etc.)
+    def __init__(self, name: str, matrix: Optional[np.ndarray], target_qubits: Union[int, List[int]]) -> None:
 
-        #name = f"C{'C' * (len(control_qubits) - 1)}{base_gate.name}"
+        target_qubits_arr = np.atleast_1d(np.asarray(target_qubits, dtype=int)).flatten()
+        if len(set(target_qubits_arr.tolist())) != target_qubits_arr.size:
+            raise ValueError( "target_qubits must not contain duplicates, got {}.".format(target_qubits_arr.tolist()) )
 
-        self.name = name
-        matrix = np.asarray(matrix)
-        self.matrix = matrix
+        super().__init__(name=name, matrix=matrix, target_qubits=target_qubits)
 
-        target_qubits = [target_qubits]
-        target_qubits = np.asarray(target_qubits, dtype=int).flatten()
-        self.target_qubits = target_qubits
 
-        self.qubits = target_qubits.tolist()
+    # ------------------------------------------------------------
+    def _full_matrix(self, num_of_qubits: int) -> np.ndarray:
+        if self.matrix is None:
+            raise ValueError(
+                "Gate '{}' has a symbolic parameter (e.g. an angle given as a string placeholder for circuit diagrams) "
+                "and therefore no numeric matrix to apply. Bind it to a numeric value first.".format(self.name)
+            )
 
-    def apply(self, num_of_qubits, multistate):
-        
-        target_qubits = self.target_qubits
-        matrix = self.matrix
-        
-        #-----------------------------------------------------
-        num_of_target_qubits = np.shape(target_qubits)[0]
+        acted_qubits = self.target_qubits.tolist()
+        other_qubits = [q for q in range(num_of_qubits) if q not in acted_qubits]
+        order = acted_qubits + other_qubits
 
-        #-----------------------------------------------------
-        # update: corrected result for target_qubit=0
-        # shift all the qubits to one ID higher, and increase the size of system to n+1
-        one_state = np.array([[1], [0]], dtype=complex)
-        multistate = np.kron(one_state,multistate)
-        target_qubits = target_qubits + 1
-        num_of_target_qubits = np.shape(target_qubits)[0]
-        num_of_qubits += 1 
+        remaining = len(other_qubits)
+        if remaining > 0: I2 = np.identity(2 ** remaining, dtype=complex)
+        else: I2 = np.array([[1]], dtype=complex)
 
-        multistate_swaped = multistate
-        for k1 in range(0, num_of_target_qubits):
-            multistate_swaped = swap_qubits(k1, target_qubits[k1], num_of_qubits, multistate_swaped)
+        block = np.kron(self.matrix, I2)
 
-        if (num_of_qubits - num_of_target_qubits) > 0:
-            dim = 2 ** (num_of_qubits - num_of_target_qubits)
-            I2 = np.identity(dim, dtype=complex)
-        else:
-            I2 = 1         
-    
-        full_matrix = np.kron(matrix, I2)
-        
-        multistate_swaped = np.dot(full_matrix, multistate_swaped)
+        dim = 2 ** num_of_qubits
+        block_tensor = block.reshape([2] * num_of_qubits + [2] * num_of_qubits)
+        inv_order = list(np.argsort(order))
+        axes = inv_order + [num_of_qubits + i for i in inv_order]
+        full_matrix = np.transpose(block_tensor, axes=axes).reshape(dim, dim)
+        return full_matrix
 
-        for k1 in reversed(range(0, num_of_target_qubits)):
-            multistate_swaped = swap_qubits(target_qubits[k1], k1, num_of_qubits, multistate_swaped)
+    # ------------------------------------------------------------
+    def apply(self, num_of_qubits: int, multistate: np.ndarray) -> np.ndarray:
+        full_matrix = self._full_matrix(num_of_qubits)
+        return np.dot(full_matrix, multistate)
 
-        multistate = multistate_swaped
+    # ------------------------------------------------------------
+    def apply_density(self, num_of_qubits: int, density_matrix: np.ndarray) -> np.ndarray:
+        full_matrix = self._full_matrix(num_of_qubits)
+        return full_matrix @ density_matrix @ np.conj(full_matrix.T)
 
-        #-----------------------------------------------------
-        #-----------------------------------------------------
-        # update: corrected result for target_qubit=0
-        # shift all the qubits to their original ID, and the size of system from n+1 to n
-        multistate = multistate[:int(np.size(multistate)/2)]
-        
-        return multistate
-
-    def apply_density(self, num_of_qubits, density_matrix):
-        
-        target_qubits = self.target_qubits
-        matrix = self.matrix
-        
-        #-----------------------------------------------------
-        num_of_target_qubits = np.shape(target_qubits)[0]
-
-        density_matrix_swaped = density_matrix
-        for k1 in range(0, num_of_target_qubits):
-            density_matrix_swaped = swap_qubits_density(k1, target_qubits[k1], num_of_qubits, density_matrix_swaped)
-
-        if (num_of_qubits - num_of_target_qubits) > 0:
-            dim = 2 ** (num_of_qubits - num_of_target_qubits)
-            I2 = np.identity(dim, dtype=complex)
-        else:
-            I2 = 1         
-    
-        full_matrix = np.kron(matrix, I2)
-        
-        density_matrix_swaped = full_matrix @ density_matrix_swaped @ np.conj(full_matrix.T)
-
-        for k1 in reversed(range(0, num_of_target_qubits)):
-            density_matrix_swaped = swap_qubits_density(target_qubits[k1], k1, num_of_qubits, density_matrix_swaped)
-
-        density_matrix = density_matrix_swaped
-
-        return density_matrix    
 
 # -------------------------------------------------------------------------------------------
 class Custom(GateCustom):
-    def __init__(self, matrix=I().matrix, target_qubits=0):
-        this_matrix = matrix
-        if is_unitary(this_matrix) == False:
-            raise('Custom matrix is not unitary')    
-        super().__init__(name='Custom', matrix=matrix, target_qubits=target_qubits)  
+    def __init__(self, matrix: Optional[np.ndarray] = None, target_qubits: Union[int, List[int]] = 0, name: str = 'Custom') -> None:
+        if matrix is None: 
+            matrix = I().matrix
+
+        matrix = np.asarray(matrix, dtype=complex)
+        if not is_unitary(matrix):
+            raise ValueError('Custom matrix is not unitary')
+
+        super().__init__(name=name, matrix=matrix, target_qubits=target_qubits)
+
+
