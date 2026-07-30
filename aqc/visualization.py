@@ -513,6 +513,7 @@ def plot_gate(ax, i, gate_i):
 # visualizer.visualize()
 
 # -------------------------------------------------------------------------------------------
+@register_gate_plotter('MeasureQubitResize')
 @register_gate_plotter('MeasureQubit')
 def plot_gate(ax, i, gate_i):
     mycolor = "#ededed"

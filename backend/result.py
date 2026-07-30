@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from collections import Counter
 from AriaQuanta._utils import np
-from AriaQuanta.aqc.circuit import Circuit, sv_reorder_qubits
+from AriaQuanta.aqc.circuit import Circuit, reorder_state
 
 
 # -------------------------------------------------------------------------------------------
@@ -28,13 +28,13 @@ class Result():
         state_remaining_all = []
         for i in range(num_of_iterations):
             statevector_i = statevector_all[i]
-            state_reorder = sv_reorder_qubits(statevector_i)
+            state_reorder = reorder_state(statevector_i)
 
             for i in range(num_of_ancilla):
                 size_state_reorder = int(np.shape(state_reorder)[0]/2)
                 state_reorder = state_reorder[:size_state_reorder]
 
-            state_remaining = sv_reorder_qubits(state_reorder)
+            state_remaining = reorder_state(state_reorder)
             state_remaining_all.append(state_remaining)
         return state_remaining_all
 

@@ -7,6 +7,7 @@ from AriaQuanta.aqc.qubit import Qubit, MultiQubit
 from AriaQuanta.aqc.gatelibrary import Custom
 from AriaQuanta.aqc.measure import Measure
 from AriaQuanta.aqc.operations import If_cbit
+from AriaQuanta.aqc.gatelibrary.gatebase import GateBase
 from AriaQuanta.aqc.gatelibrary import GateSingleQubit
 
 
@@ -24,7 +25,7 @@ class Circuit:
 
         # result of the measurement
         self.measurequbit_values: Dict[str, str] = {}       # {'q0': '1', 'q1': '0'}
-        self.gates: List = []
+        self.gates: List[GateBase] = []
         self.width: int = num_of_qubits + num_of_clbits     # number of wires
             
 
@@ -37,12 +38,12 @@ class Circuit:
 
 
     # ------------------------------------------------------------
-    def __or__(self, gate) -> "Circuit":
+    def __or__(self, gate: GateBase) -> "Circuit":
         self.add_gate(gate)
         return self
 
     # ------------------------------------------------------------
-    def add_gate(self, gate) -> None:
+    def add_gate(self, gate: GateBase) -> None:
 
         if max(gate.qubits) >= self.num_of_qubits:
             raise ValueError("{} is out-of-range for the qubit ID. The valid ID is between 0 to {}"
