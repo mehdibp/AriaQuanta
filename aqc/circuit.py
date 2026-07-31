@@ -6,7 +6,7 @@ from AriaQuanta._utils import np, reorder_state
 from AriaQuanta.aqc.qubit import Qubit, MultiQubit
 from AriaQuanta.aqc.gatelibrary import Custom
 from AriaQuanta.aqc.measure import Measure
-from AriaQuanta.aqc.operations import If_cbit
+from AriaQuanta.aqc.operations import Operations
 from AriaQuanta.aqc.gatelibrary.gatebase import GateBase
 from AriaQuanta.aqc.gatelibrary import GateSingleQubit
 
@@ -64,18 +64,18 @@ class Circuit:
         state = self.statevector
 
         measurequbit_values: Dict[str, str] = {}
+        clbit_values_dict  : Dict[str, str] = {}    # populated by Measure; read by any classically-controlled Operations
         for gate in self.gates:
             if isinstance(gate, Measure):
                 state = gate.apply(self.num_of_qubits, self.statevector)
-                clbit_values_dict = gate.clbit_values_dict
+                clbit_values_dict.update(gate.clbit_values_dict)
                 qubit_values_dict = gate.qubit_values_dict
                 
                 measurequbit_values.update(qubit_values_dict)    # modifies z with keys and values of y
 
-            elif isinstance(gate, If_cbit):
-                conditions = gate.conditions
-                if clbit_values_dict[conditions[0]] == str(conditions[1]):
-                    state = gate.apply(self.num_of_qubits, self.statevector)
+            elif isinstance(gate, Operations):
+                # If_cbit / Else_cbit / ClassicalControl now own their condition check internally
+                state = gate.apply(self.num_of_qubits, self.statevector, clbit_values_dict)
             else:
                 state = gate.apply(self.num_of_qubits, self.statevector)
             self.statevector = state
