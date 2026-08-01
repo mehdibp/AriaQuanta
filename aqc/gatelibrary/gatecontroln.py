@@ -113,21 +113,26 @@ class CNZ(GateControlN):
 class _AxisRotationGate(GateControlN):
     _gate_name: str = ''
 
-    def __init__(self, param: Union[float, str], control_qubits: Union[int, List[int]], target_qubits: int=0) -> None:
+    def __init__(self, phase: Union[float, str], control_qubits: Union[int, List[int]], target_qubits: int=0) -> None:
         self.control_qubits = np.atleast_1d(np.asarray(control_qubits, dtype=int)).flatten()
-        self._param = param
+        self._phase = phase
         matrix = self.update_matrix()
-        base_matrix = None if isinstance(param, str) else self._base_matrix_for_param(param)
+        base_matrix = None if isinstance(phase, str) else self._base_matrix_for_param(phase)
         super().__init__(name=self._gate_name, matrix=matrix, base_matrix=base_matrix, control_qubits=self.control_qubits, target_qubits=target_qubits)
 
-    def _base_matrix_for_param(self, value: float) -> np.ndarray:
+
+    @property
+    def phase(self) -> Union[float, str]:
+        return self._phase
+
+    def _base_matrix_for_param(self, phase: float) -> np.ndarray:
         raise NotImplementedError
 
     def update_matrix(self) -> Optional[np.ndarray]:
-        if isinstance(self._param, str):
+        if isinstance(self._phase, str):
             matrix = None
         else:
-            base = self._base_matrix_for_param(self._param)
+            base = self._base_matrix_for_param(self._phase)
             matrix = _multi_controlled_matrix(base, self.control_qubits.size)
 
         self.matrix = matrix
@@ -138,11 +143,7 @@ class CNP(_AxisRotationGate):
     _gate_name = 'CNP'
 
     def __init__(self, phi: Union[float, str], control_qubits: Union[int, List[int]], target_qubits: int=0) -> None:
-        super().__init__(param=phi, control_qubits=control_qubits, target_qubits=target_qubits)
-
-    @property
-    def phi(self) -> Union[float, str]:
-        return self._param
+        super().__init__(phase=phi, control_qubits=control_qubits, target_qubits=target_qubits)
 
     def _base_matrix_for_param(self, phi: float) -> np.ndarray:
         return np.array([[1, 0], [0, np.exp(1j * phi)]])

@@ -33,6 +33,10 @@ class GateBase:
     @property
     def target_qubits(self) -> np.ndarray:
         return self._target_qubits
+    
+    @property
+    def phase(self) -> np.ndarray:
+        pass
 
     # ------------------------------------------------------------
     @target_qubits.setter

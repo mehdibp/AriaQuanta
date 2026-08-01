@@ -101,7 +101,7 @@ class H(GateSingleQubit):
 # -------------------------------------------------------------------------------------------
 class P(GateSingleQubit):
     def __init__(self, phi: float, target_qubits: Union[int, List[int]]=0):
-        self.phi = phi
+        self.phase = phi
         matrix = np.array([[1, 0], [0, np.exp(1j * phi)]])
         super().__init__(name='P', matrix=matrix, target_qubits=target_qubits)
 
@@ -116,22 +116,22 @@ class T(GateSingleQubit):
 class _AxisRotationGate(GateSingleQubit):
     _gate_name: str = ''    # set by each subclass
 
-    def __init__(self, theta: Union[float, str], target_qubits: Union[int, List[int]]=0) -> None:
-        self._theta = theta
+    def __init__(self, phase: Union[float, str], target_qubits: Union[int, List[int]]=0) -> None:
+        self._phase = phase
         matrix = self.update_matrix()
         super().__init__(name=self._gate_name, matrix=matrix, target_qubits=target_qubits)
 
     @property
-    def theta(self) -> Union[float, str]:
-        return self._theta
+    def phase(self) -> Union[float, str]:
+        return self._phase
 
 
-    def _matrix_for_theta(self, theta: float) -> np.ndarray:
+    def _matrix_for_theta(self, phase: float) -> np.ndarray:
         raise NotImplementedError
 
     def update_matrix(self) -> Optional[np.ndarray]:
-        if isinstance(self.theta, str): matrix = None
-        else: matrix = self._matrix_for_theta(self.theta)
+        if isinstance(self.phase, str): matrix = None
+        else: matrix = self._matrix_for_theta(self.phase)
 
         self.matrix = matrix
         return matrix
@@ -169,8 +169,8 @@ class RZ(_AxisRotationGate):
 # ------------------------------------------------------------------------------------------- 
 class Rot(GateSingleQubit):
     def __init__(self, theta: float, phi: float, lambda_: float, target_qubits: Union[int, List[int]]=0):
-        self.theta = theta
-        self.phi = phi
+        self.theta   = theta
+        self.phi     = phi
         self.lambda_ = lambda_
         matrix = np.array([
             [np.cos(self.theta / 2), -np.exp(1j * self.lambda_) * np.sin(self.theta / 2)],

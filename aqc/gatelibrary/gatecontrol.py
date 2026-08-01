@@ -132,25 +132,25 @@ class CSX(GateControl):
 class _AxisRotationGate(GateControl):
     _gate_name: str = ''    # set by each subclass
 
-    def __init__(self, param: Union[float, str], control_qubits: int=0, target_qubits: int=1) -> None:
-        self._param = param
+    def __init__(self, phase: Union[float, str], control_qubits: int=0, target_qubits: int=1) -> None:
+        self._phase= phase
         matrix = self.update_matrix()
-        base_matrix = None if isinstance(param, str) else self._base_matrix_for_param(param)
+        base_matrix = None if isinstance(phase, str) else self._base_matrix_for_param(phase)
         super().__init__(name=self._gate_name, matrix=matrix, base_matrix=base_matrix,
                           control_qubits=control_qubits, target_qubits=target_qubits)
 
     @property
-    def phi(self) -> Union[float, str]:
-        return self._param
+    def phase(self) -> Union[float, str]:
+        return self._phase
 
 
-    def _base_matrix_for_param(self, value: float) -> np.ndarray:
+    def _base_matrix_for_param(self, phase: float) -> np.ndarray:
         raise NotImplementedError
 
     def update_matrix(self) -> Optional[np.ndarray]:
-        if isinstance(self._param, str): matrix = None
+        if isinstance(self._phase, str): matrix = None
         else:
-            base = self._base_matrix_for_param(self._param)
+            base = self._base_matrix_for_param(self._phase)
             matrix = np.eye(4, dtype=complex)
             matrix[2:, 2:] = base
 
@@ -162,7 +162,7 @@ class CP(_AxisRotationGate):
     _gate_name = 'CP'
 
     def __init__(self, phi: Union[float, str], control_qubits: int=0, target_qubits: int=1) -> None:
-        super().__init__(param=phi, control_qubits=control_qubits, target_qubits=target_qubits)
+        super().__init__(phase=phi, control_qubits=control_qubits, target_qubits=target_qubits)
 
     def _base_matrix_for_param(self, phi: float) -> np.ndarray:
         return np.array([[1, 0], [0, np.exp(1j * phi)]])
@@ -172,7 +172,7 @@ class CRX(_AxisRotationGate):
     _gate_name = 'CRX'
 
     def __init__(self, theta: Union[float, str], control_qubits: int=0, target_qubits: int=1) -> None:
-        super().__init__(param=theta, control_qubits=control_qubits, target_qubits=target_qubits)
+        super().__init__(phase=theta, control_qubits=control_qubits, target_qubits=target_qubits)
 
     def _base_matrix_for_param(self, theta: float) -> np.ndarray:
         return np.array([
@@ -185,7 +185,7 @@ class CRY(_AxisRotationGate):
     _gate_name = 'CRY'
 
     def __init__(self, theta: Union[float, str], control_qubits: int=0, target_qubits: int=1) -> None:
-        super().__init__(param=theta, control_qubits=control_qubits, target_qubits=target_qubits)
+        super().__init__(phase=theta, control_qubits=control_qubits, target_qubits=target_qubits)
 
     def _base_matrix_for_param(self, theta: float) -> np.ndarray:
         return np.array([
@@ -198,7 +198,7 @@ class CRZ(_AxisRotationGate):
     _gate_name = 'CRZ'
 
     def __init__(self, theta: Union[float, str], control_qubits: int=0, target_qubits: int=1) -> None:
-        super().__init__(param=theta, control_qubits=control_qubits, target_qubits=target_qubits)
+        super().__init__(phase=theta, control_qubits=control_qubits, target_qubits=target_qubits)
 
     def _base_matrix_for_param(self, theta: float) -> np.ndarray:
         return np.array([

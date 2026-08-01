@@ -111,23 +111,23 @@ class SWAPalpha(GateDoubleQubit):
 class _AxisRotationGate(GateDoubleQubit):
     _gate_name: str = ''    # set by each subclass
 
-    def __init__(self, phi: Union[float, str], target_qubits_1: int=0, target_qubits_2: int=1) -> None:
-        self._param = phi
+    def __init__(self, phase: Union[float, str], target_qubits_1: int=0, target_qubits_2: int=1) -> None:
+        self._phase = phase
         matrix = self.update_matrix()
         target_qubits = sorted([target_qubits_1, target_qubits_2])
         super().__init__(name=self._gate_name, matrix=matrix, target_qubits=target_qubits)
     
     @property
-    def phi(self) -> Union[float, str]:
-        return self._param
+    def phase(self) -> Union[float, str]:
+        return self._phase
     
     
-    def _matrix_for_param(self, value: float) -> np.ndarray:
+    def _matrix_for_param(self, phase: float) -> np.ndarray:
         raise NotImplementedError
 
     def update_matrix(self) -> Optional[np.ndarray]:
-        if isinstance(self._param, str): matrix = None
-        else: matrix = self._matrix_for_param(self._param)
+        if isinstance(self._phase, str): matrix = None
+        else: matrix = self._matrix_for_param(self._phase)
 
         self.matrix = matrix
         return matrix
