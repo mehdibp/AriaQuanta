@@ -90,6 +90,23 @@ class Circuit:
         self.measurequbit_values = measurequbit_values                  # save as the circuit's property
 
         return state
+
+    # ------------------------------------------------------------
+    def run_density(self) -> np.ndarray:
+        # the density-matrix counterpart to run() -- every Gate already implements apply_density()
+        for gate in self.gates:
+            if isinstance(gate, (Measure, Operations)):
+                raise NotImplementedError(
+                    "run_density() doesn't support mid-circuit Measure/If_cbit/Else_cbit/ ClassicalControl yet -- "
+                    "density-matrix simulation currently only covers circuits made of unitary (or Kraus-channel) gates. " 
+                    "Run the measurement/classical-control part with run() instead, or drop it for a density-matrix run."
+                )
+
+        density_matrix = self.initial_state @ np.conj(self.initial_state.T)
+        for gate in self.gates:
+            density_matrix = gate.apply_density(self.num_of_qubits, density_matrix)
+
+        return density_matrix
         
     # ------------------------------------------------------------
     def measure_all(self):

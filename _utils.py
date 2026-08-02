@@ -67,3 +67,8 @@ def reorder_state(state):
     reordered_state = state[new_indices]
     return reordered_state
 
+# -------------------------------------------------------------------------------------------
+def sv_to_density_matrix(statevector):
+    return statevector @ statevector.conj().T
+
+
