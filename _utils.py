@@ -83,12 +83,12 @@ def _validate_qubit_index(idx: int, num_of_qubits: int, name: str) -> None:
     if not (0 <= idx < num_of_qubits):
         raise ValueError("'{}' must be between 0 and {} (num_of_qubits - 1), got {}.".format(name, num_of_qubits - 1, idx))
 
-def _validate_state_shape(multistate: "np.ndarray", num_of_qubits: int) -> None:
+def _validate_state_shape(multistate: np.ndarray, num_of_qubits: int) -> None:
     expected = 2 ** num_of_qubits
     if multistate.shape[0] != expected:
         raise ValueError("multistate has {} rows, expected 2**num_of_qubits = {}.".format(multistate.shape[0], expected))
 
-def _validate_density_shape(density_matrix: "np.ndarray", num_of_qubits: int) -> None:
+def _validate_density_shape(density_matrix: np.ndarray, num_of_qubits: int) -> None:
     expected = 2 ** num_of_qubits
     if density_matrix.ndim != 2 or density_matrix.shape[0] != expected or density_matrix.shape[1] != expected:
         raise ValueError("density_matrix has shape {}, expected ({}, {}).".format(density_matrix.shape, expected, expected))
