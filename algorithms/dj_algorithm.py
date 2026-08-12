@@ -10,13 +10,7 @@ def dj(n_qubits: int, is_constant: bool=True) -> Circuit:
     :param is_constant: Boolean flag to decide whether the oracle represents a constant or balanced function
     :return: Measurement result indicating if the function is constant or balanced
     """
-
-    if not isinstance(n_qubits, int) or isinstance(n_qubits, bool):
-        raise TypeError(f"n_qubits must be an int, got {type(n_qubits).__name__}")
-    if n_qubits < 1:
-        raise ValueError(f"n_qubits must be a positive integer, got {n_qubits}")
-    if not isinstance(is_constant, bool):
-        raise TypeError(f"is_constant must be a bool, got {type(is_constant).__name__}")
+    _check_validation(n_qubits, is_constant)
 
     # Initialize circuit with n_qubits + 1 (oracle) qubit
     qc = Circuit(n_qubits + 1, num_of_ancilla=1)
@@ -40,5 +34,16 @@ def dj(n_qubits: int, is_constant: bool=True) -> Circuit:
         qc | H(qubit)
     
     return qc
+
+
+# -------------------------------------------------------------------------------------------
+def _check_validation(n_qubits: int, is_constant: bool):
+    if not isinstance(n_qubits, int) or isinstance(n_qubits, bool):
+        raise TypeError(f"n_qubits must be an int, got {type(n_qubits).__name__}")
+    if n_qubits < 1:
+        raise ValueError(f"n_qubits must be a positive integer, got {n_qubits}")
+    if not isinstance(is_constant, bool):
+        raise TypeError(f"is_constant must be a bool, got {type(is_constant).__name__}")
+
 
 

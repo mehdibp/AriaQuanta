@@ -30,7 +30,7 @@ class Hamiltonian:
 
     # ------------------------------------------------------------
     @property
-    def _check_validation(terms):
+    def _check_validation(terms: List[Tuple[str, float]]):
         if not isinstance(terms, (list, tuple)) or len(terms) == 0:
             raise ValueError("'terms' must be a non-empty list of (pauli_string, coefficient) tuples.")
 
@@ -184,4 +184,6 @@ def find_expectation_value(circuit: Circuit, hamiltonian: Hamiltonian, num_of_it
     # {'I': 1.0, 'Z0': 0.0, 'Z1': 0.2, 'Z0Z1': 0.4, 'X0X1': -0.4}
     #  0.2
     return pauli_exp_value, total_energy
+
+
 

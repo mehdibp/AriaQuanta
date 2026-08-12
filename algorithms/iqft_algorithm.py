@@ -18,11 +18,7 @@ def iqft(qc: Circuit, qubits: List[int]) -> Circuit:
     :param qubits: List of qubit indices to apply the IQFT on.
     :return: The same circuit qc, for chaining.
     """
-    if not isinstance(qubits, (list, tuple)) or len(qubits) == 0:
-        raise ValueError("qubits must be a non-empty list of qubit indices.")
-    if len(set(qubits)) != len(qubits):
-        raise ValueError(f"qubits must not contain duplicates, got {list(qubits)}.")
-
+    _check_validation(qubits)
     n = len(qubits)
 
     # Undo the qubit-order-reversing SWAPs qft() applies at the end (SWAP is self-inverse)
@@ -41,4 +37,13 @@ def iqft(qc: Circuit, qubits: List[int]) -> Circuit:
         qc | H(qubits[i])
 
     return qc   
+
+
+# -------------------------------------------------------------------------------------------
+def _check_validation(qubits: List[int]):
+    if not isinstance(qubits, (list, tuple)) or len(qubits) == 0:
+        raise ValueError("qubits must be a non-empty list of qubit indices.")
+    if len(set(qubits)) != len(qubits):
+        raise ValueError(f"qubits must not contain duplicates, got {list(qubits)}.")
+
 

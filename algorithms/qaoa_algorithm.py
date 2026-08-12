@@ -45,7 +45,7 @@ class QAOA(VQE):
 
     # ------------------------------------------------------------
     @property
-    def _check_validation(graph, n_layers, num_of_iter_measure):
+    def _check_validation(graph: Any, n_layers: int, num_of_iter_measure: int):
         if not isinstance(n_layers, int) or isinstance(n_layers, bool):
             raise TypeError("'n_layers' must be an int, got {}.".format(type(n_layers).__name__))
         if n_layers < 1:

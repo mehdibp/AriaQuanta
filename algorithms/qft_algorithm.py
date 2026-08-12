@@ -18,11 +18,7 @@ def qft(qc: Circuit, qubits: List[int]) -> Circuit:
     :param qubits: List of qubit indices to apply the QFT on.
     :return: The same circuit qc, for chaining.
     """
-    if not isinstance(qubits, (list, tuple)) or len(qubits) == 0:
-        raise ValueError("qubits must be a non-empty list of qubit indices.")
-    if len(set(qubits)) != len(qubits):
-        raise ValueError(f"qubits must not contain duplicates, got {list(qubits)}.")
-
+    _check_validation(qubits)
     n = len(qubits)
 
     for i in range(n):
@@ -40,5 +36,14 @@ def qft(qc: Circuit, qubits: List[int]) -> Circuit:
         qc | SWAP(qubits[i], qubits_reversed[i])
 
     return qc
+
+
+# -------------------------------------------------------------------------------------------
+def _check_validation(qubits: List[int]):
+    if not isinstance(qubits, (list, tuple)) or len(qubits) == 0:
+        raise ValueError("qubits must be a non-empty list of qubit indices.")
+    if len(set(qubits)) != len(qubits):
+        raise ValueError(f"qubits must not contain duplicates, got {list(qubits)}.")
+
 
 

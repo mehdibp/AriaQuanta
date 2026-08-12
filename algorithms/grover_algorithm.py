@@ -70,17 +70,8 @@ def grover(n: int, target_state: str) -> Circuit:
     :param target_state: Binary string of the target state (must have length n), e.g. '101'.
     :return: The built Circuit (not yet run).
     """
-    if not isinstance(n, int) or isinstance(n, bool):
-        raise TypeError(f"n must be an int, got {type(n).__name__}")
-    if n < 1:
-        raise ValueError(f"n must be a positive integer, got {n}")
-    if not isinstance(target_state, str) or not target_state:
-        raise TypeError(f"target_state must be a non-empty string, got {type(target_state).__name__}")
-    if len(target_state) != n:
-        raise ValueError(f"target_state must have length n ({n}), got length {len(target_state)} ('{target_state}')")
-    if any(bit not in ('0', '1') for bit in target_state):
-        raise ValueError(f"target_state must only contain '0'/'1' characters, got '{target_state}'")
-
+    _check_validation(n, target_state)
+    
     # Step 1: Initialization
     qc = Circuit(n)
 
@@ -103,3 +94,17 @@ def grover(n: int, target_state: str) -> Circuit:
     # measurement, measurement_index, probabilities = qc.measure_all()
     
     return qc #, measurement, measurement_index, probabilities
+
+
+# -------------------------------------------------------------------------------------------
+def _check_validation(n: int, target_state: str):
+    if not isinstance(n, int) or isinstance(n, bool):
+        raise TypeError(f"n must be an int, got {type(n).__name__}")
+    if n < 1:
+        raise ValueError(f"n must be a positive integer, got {n}")
+    if not isinstance(target_state, str) or not target_state:
+        raise TypeError(f"target_state must be a non-empty string, got {type(target_state).__name__}")
+    if len(target_state) != n:
+        raise ValueError(f"target_state must have length n ({n}), got length {len(target_state)} ('{target_state}')")
+    if any(bit not in ('0', '1') for bit in target_state):
+        raise ValueError(f"target_state must only contain '0'/'1' characters, got '{target_state}'")
