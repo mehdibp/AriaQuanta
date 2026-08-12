@@ -20,6 +20,17 @@ class Hamiltonian:
             Example: H = 0.5*Z1 + 0.3*X2*Z3  ->  terms = [("Z1", 0.5), ("X2Z3", 0.3)]
             Use "I" for a (global) identity term.
         """
+        self._check_validation(terms)
+
+        self.terms = list(terms)                        # [("Z1", 0.5), ("X2Z3", 0.3)]
+        terms_dict = dict(self.terms)
+
+        self.paulis = list(terms_dict.keys())             # paulis: ['Z1', 'X2Z3']
+        self.coefs = np.array(list(terms_dict.values()))  # [0.5 0.3]
+
+    # ------------------------------------------------------------
+    @property
+    def _check_validation(terms):
         if not isinstance(terms, (list, tuple)) or len(terms) == 0:
             raise ValueError("'terms' must be a non-empty list of (pauli_string, coefficient) tuples.")
 
@@ -30,18 +41,10 @@ class Hamiltonian:
             pauli_string, coef = term
             _parse_pauli_string(pauli_string)     # validates format; raises ValueError if malformed
             if not isinstance(coef, (int, float, np.floating, np.integer)) or isinstance(coef, bool):
-                raise TypeError(
-                    "Coefficient for '{}' must be a real number, got {}.".format(pauli_string, type(coef).__name__)
-                )
+                raise TypeError( "Coefficient for '{}' must be a real number, got {}.".format(pauli_string, type(coef).__name__) )
             if pauli_string in seen_paulis:
                 raise ValueError("Duplicate Pauli term '{}' in Hamiltonian terms.".format(pauli_string))
             seen_paulis.add(pauli_string)
-
-        self.terms = list(terms)                        # [("Z1", 0.5), ("X2Z3", 0.3)]
-        terms_dict = dict(self.terms)
-
-        self.paulis = list(terms_dict.keys())             # paulis: ['Z1', 'X2Z3']
-        self.coefs = np.array(list(terms_dict.values()))  # [0.5 0.3]
 
 
 # -------------------------------------------------------------------------------------------
