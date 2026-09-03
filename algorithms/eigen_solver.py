@@ -29,7 +29,7 @@ class Hamiltonian:
         self.coefs = np.array(list(terms_dict.values()))  # [0.5 0.3]
 
     # ------------------------------------------------------------
-    @property
+    @staticmethod
     def _check_validation(terms: List[Tuple[str, float]]):
         if not isinstance(terms, (list, tuple)) or len(terms) == 0:
             raise ValueError("'terms' must be a non-empty list of (pauli_string, coefficient) tuples.")

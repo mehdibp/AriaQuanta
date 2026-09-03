@@ -61,6 +61,7 @@ class Circuit:
 
     # ------------------------------------------------------------
     def run(self) -> np.ndarray:
+        self.statevector = self.initial_state       # always start fresh, so run() is safe to call more
         state = self.statevector
 
         measurequbit_values: Dict[str, str] = {}

@@ -5,6 +5,7 @@ import concurrent.futures
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
 from AriaQuanta._utils import np, Config
+from AriaQuanta.aqc import circuit
 from AriaQuanta.aqc.circuit import Circuit
 from AriaQuanta.backend.job import Job
 from AriaQuanta.backend.result import Result, ResultDensity
@@ -26,28 +27,11 @@ class Simulator:
         self.iterations: int = 0
         self.density   : bool = False
 
-    # ------------------------------------------------------------
-    @staticmethod
-    def _run_one_shot(circuit: Circuit, density: bool, job_id: int) -> Tuple[np.ndarray, Dict[str, str]]:
-        this_job = Job(str(job_id).zfill(6))
-        return this_job.job_run(circuit, density)
-
 
     # ------------------------------------------------------------
     def simulate(self, circuit: Circuit, iterations: int, num_nodes: int=1,
                     density: bool=False, show_progress: bool=True) -> Union[Result, ResultDensity]:
-
-        if not isinstance(circuit, Circuit):
-            raise TypeError("'circuit' must be a Circuit instance, got {}.".format(type(circuit).__name__))
-        if iterations < 1:
-            raise ValueError("'iterations' must be at least 1, got {}.".format(iterations))
-        if num_nodes  < 1:
-            raise ValueError("'num_nodes' must be at least 1, got {}.".format(num_nodes))
-        if Config.hardware not in SUPPORTED_HARDWARE:
-            raise NotImplementedError(
-                "Simulator currently only supports Config.hardware == 'Local' (got {!r}); "
-                "'HPC'/'Cloud'/'QPU' are declared but not implemented yet.".format(Config.hardware)
-            )
+        self._check_validation(circuit, iterations, num_nodes)
         
         self.circuit    = circuit
         self.iterations = iterations
@@ -65,6 +49,27 @@ class Simulator:
             return ResultDensity(list(state_all))
         else:
             return Result(list(state_all), circuit.num_of_qubits, circuit.num_of_ancilla, list(measurequbit_values_all))
+
+    # ------------------------------------------------------------
+    @staticmethod
+    def _run_one_shot(circuit: Circuit, density: bool, job_id: int) -> Tuple[np.ndarray, Dict[str, str]]:
+        this_job = Job(str(job_id).zfill(6))
+        return this_job.job_run(circuit, density)
+
+    # ------------------------------------------------------------
+    @staticmethod
+    def _check_validation(circuit: Circuit, iterations: int, num_nodes: int):
+        if not isinstance(circuit, Circuit):
+            raise TypeError("'circuit' must be a Circuit instance, got {}.".format(type(circuit).__name__))
+        if iterations < 1:
+            raise ValueError("'iterations' must be at least 1, got {}.".format(iterations))
+        if num_nodes  < 1:
+            raise ValueError("'num_nodes' must be at least 1, got {}.".format(num_nodes))
+        if Config.hardware not in SUPPORTED_HARDWARE:
+            raise NotImplementedError(
+                "Simulator currently only supports Config.hardware == 'Local' (got {!r}); "
+                "'HPC'/'Cloud'/'QPU' are declared but not implemented yet.".format(Config.hardware)
+            )
         
 
 

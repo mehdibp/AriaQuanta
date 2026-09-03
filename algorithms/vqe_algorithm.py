@@ -81,7 +81,7 @@ class VQE(): #, threshold, params_dict):
     
 
     # ------------------------------------------------------------
-    @property
+    @staticmethod
     def _check_validation(ansatz, hamiltonian, num_of_iter_measure, optimizer):
         if not isinstance(ansatz, Ansatz):
             raise TypeError("'ansatz' must be an Ansatz instance, got {}.".format(type(ansatz).__name__))

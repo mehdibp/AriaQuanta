@@ -7,28 +7,28 @@ from AriaQuanta.aqc.gatelibrary import X, Y, Z, GateCustom
 # -------------------------------------------------------------------------------------------
 class NoiseClass:
     def __init__(self, name: str, kraus_operators: List[np.ndarray], target_qubits: Optional[Union[int, List[int]]]=None) -> None:
-            kraus_operators = [np.asarray(k, dtype=complex) for k in kraus_operators]
-            n_kraus_qubits = self._validate_kraus_operators(kraus_operators)
-    
-            if target_qubits is None:
-                if n_kraus_qubits != 1:
-                    raise ValueError("target_qubits must be given explicitly for a {}-qubit noise channel.".format(n_kraus_qubits))
-                
-                self.target_qubits: Optional[List[int]] = None
-                self.qubits: List[int] = []
+        kraus_operators = [np.asarray(k, dtype=complex) for k in kraus_operators]
+        n_kraus_qubits = self._validate_kraus_operators(kraus_operators)
 
-            else:
-                target_qubits_arr = np.atleast_1d(np.asarray(target_qubits, dtype=int)).flatten()
-                if target_qubits_arr.size != n_kraus_qubits:
-                    raise ValueError( "This {}-qubit noise channel needs {} target qubit(s), got {}.".format(n_kraus_qubits, n_kraus_qubits, target_qubits_arr.size) )
-                if len(set(target_qubits_arr.tolist())) != target_qubits_arr.size:
-                    raise ValueError("target_qubits must not contain duplicates, got {}.".format(target_qubits_arr.tolist()))
+        if target_qubits is None:
+            if n_kraus_qubits != 1:
+                raise ValueError("target_qubits must be given explicitly for a {}-qubit noise channel.".format(n_kraus_qubits))
+            
+            self.target_qubits: Optional[List[int]] = None
+            self.qubits: List[int] = []
 
-                self.target_qubits = target_qubits_arr.tolist()
-                self.qubits = target_qubits_arr.tolist()
-    
-            self.name = name
-            self.kraus_operators = kraus_operators
+        else:
+            target_qubits_arr = np.atleast_1d(np.asarray(target_qubits, dtype=int)).flatten()
+            if target_qubits_arr.size != n_kraus_qubits:
+                raise ValueError( "This {}-qubit noise channel needs {} target qubit(s), got {}.".format(n_kraus_qubits, n_kraus_qubits, target_qubits_arr.size) )
+            if len(set(target_qubits_arr.tolist())) != target_qubits_arr.size:
+                raise ValueError("target_qubits must not contain duplicates, got {}.".format(target_qubits_arr.tolist()))
+
+            self.target_qubits = target_qubits_arr.tolist()
+            self.qubits = target_qubits_arr.tolist()
+
+        self.name = name
+        self.kraus_operators = kraus_operators
 
 
     # ------------------------------------------------------------

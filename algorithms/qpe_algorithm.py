@@ -43,7 +43,7 @@ def qpe(unitary_matrix: np.ndarray, t_counting_qubits: int, namedraw: str = 'CU'
     powers = [2 ** i for i in range(t_counting_qubits - 1, -1, -1)]
 
     for i in range(t_counting_qubits):
-        myCU = CU(unitary_matrix, control_qubits=[i], target_qubits=target_qubits)
+        myCU = CU(unitary_matrix, control_qubits=i, target_qubits=target_qubits)
         myCU.namedraw = namedraw
         for _ in range(powers[i]):
             qc | myCU
