@@ -229,10 +229,10 @@ def plot_default(ax: Axes, i: float, gate_i: GateBase, style: Dict[str, Any]) ->
 # Others : Ph, Xsqrt, P, RX, RY, RZ, Rot ----------------------------------------------------
 
 # -------------------------------------------------------------------------------------------
-@register_gate_plotter('GPh')
+@register_gate_plotter('G-Ph')
 def plot_gph(ax: Axes, i: float, gate_i: GateBase, style: Dict[str, Any]) -> None:
-    delta = gate_i.delta
-    this_text = '{}({:0.2f})'.format(gate_i.name, delta)
+    phase = gate_i.phase
+    this_text = '{}({:0.2f})'.format(gate_i.name, phase)
     for q in gate_i.qubits:
         ax.text(i, q, this_text, fontsize=style['fontsize'], ha='center', va='center',
                 bbox=dict(boxstyle='round,pad=0.5', edgecolor='black', facecolor=style['color_single']))

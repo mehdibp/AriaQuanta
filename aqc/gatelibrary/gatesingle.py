@@ -50,13 +50,6 @@ class I(GateSingleQubit):
         super().__init__(name='I', matrix=matrix, target_qubits=target_qubits)
 
 # -------------------------------------------------------------------------------------------
-class GlobalPhase(GateSingleQubit):
-    def __init__(self, delta: float, target_qubits: Union[int, List[int]]=0):
-        self.delta = delta
-        matrix = np.exp(+1j * delta) * np.eye(2)
-        super().__init__(name='GPh', matrix=matrix, target_qubits=target_qubits)
-
-# -------------------------------------------------------------------------------------------
 class X(GateSingleQubit):
     def __init__(self, target_qubits: Union[int, List[int]]=0):
         matrix = np.array([[0, 1], [1, 0]])
@@ -99,13 +92,6 @@ class H(GateSingleQubit):
         super().__init__(name='H', matrix=matrix, target_qubits=target_qubits)  
 
 # -------------------------------------------------------------------------------------------
-class P(GateSingleQubit):
-    def __init__(self, phi: float, target_qubits: Union[int, List[int]]=0):
-        self.phase = phi
-        matrix = np.array([[1, 0], [0, np.exp(1j * phi)]])
-        super().__init__(name='P', matrix=matrix, target_qubits=target_qubits)
-
-# -------------------------------------------------------------------------------------------
 class T(GateSingleQubit):
     def __init__(self, target_qubits: Union[int, List[int]]=0):
         matrix = np.array([[1, 0], [0, np.exp(1j * np.pi / 4)]])
@@ -136,6 +122,14 @@ class _AxisRotationGate(GateSingleQubit):
         self.matrix = matrix
         return matrix
 
+
+# -------------------------------------------------------------------------------------------
+class GlobalPhase(_AxisRotationGate):
+    _gate_name = 'G-Ph'
+
+    def _matrix_for_theta(self, theta: float) -> np.ndarray:
+        return np.array([ np.exp(+1j * theta) * np.eye(2) ])
+
 # -------------------------------------------------------------------------------------------
 class RX(_AxisRotationGate):
     _gate_name = 'RX'
@@ -165,6 +159,13 @@ class RZ(_AxisRotationGate):
             [np.exp(-1j * theta / 2), 0.0],
             [0.0, np.exp(1j * theta / 2)]
         ])
+
+# -------------------------------------------------------------------------------------------
+class P(_AxisRotationGate):
+    _gate_name = 'P'
+
+    def _matrix_for_theta(self, theta: float) -> np.ndarray:
+            return np.array([ [1, 0], [0, np.exp(1j * theta)] ])
 
 # ------------------------------------------------------------------------------------------- 
 class Rot(GateSingleQubit):
