@@ -3,11 +3,11 @@ from typing import List, Optional, Union
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit
 from AriaQuanta.aqc.gatelibrary import X
-from AriaQuanta.qml.encoding.base import validate_binary_data
+from AriaQuanta.qml.encoding.validation import validate_binary_data
 
 
 # -------------------------------------------------------------------------------------------
-def basis_encoding(data: Union[List[int], np.ndarray], num_qubits: Optional[int] = None) -> Circuit:
+def basis_encoding(data: Union[List[int], np.ndarray], num_qubits: Optional[int]=None) -> Circuit:
     """
     Basis encoding: maps a classical bit string b = (b_0, ..., b_{n-1}) directly onto the
     computational basis state |b_0 b_1 ... b_{n-1}>, by applying an X gate on every qubit

@@ -1,11 +1,35 @@
 from typing import Optional
 
+from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit
-from AriaQuanta.qml.encoding.base import amplitude_statevector
+from AriaQuanta.qml.encoding.validation import validate_features
 
+
+# ------------------------------------------------------------
+def amplitude_statevector(data, num_of_qubits: Optional[int]):
+    arr = np.asarray(validate_features(data), dtype=complex)
+
+    min_qubits = max(1, int(np.ceil(np.log2(arr.size))))
+    n = num_of_qubits if num_of_qubits is not None else min_qubits
+    dim = 2 ** n
+    if arr.size > dim:
+        raise ValueError(
+            "'data' has {} amplitude(s), which needs at least {} qubit(s); got num_of_qubits={}."
+            .format(arr.size, min_qubits, n)
+        )
+
+    padded = np.zeros(dim, dtype=complex)
+    padded[:arr.size] = arr
+
+    norm = float(np.linalg.norm(padded))
+    if norm == 0:
+        raise ValueError("Cannot amplitude-encode an all-zero vector (norm is 0).")
+    padded = padded / norm
+
+    return padded.reshape(dim, 1), n
 
 # -------------------------------------------------------------------------------------------
-def amplitude_encoding(data, num_of_qubits: Optional[int] = None, normalize: bool = True) -> Circuit:
+def amplitude_encoding(data, num_of_qubits: Optional[int] = None) -> Circuit:
     """
     Amplitude encoding: encodes a classical vector x directly into the amplitudes of a
     quantum state, |psi> = sum_i x_i |i> / ||x||, packing 2**n classical numbers into n
@@ -26,7 +50,7 @@ def amplitude_encoding(data, num_of_qubits: Optional[int] = None, normalize: boo
                        normalized (raises otherwise).
     :return: A new Circuit whose initial state is the (padded, normalized) data.
     """
-    statevector, n = amplitude_statevector(data, num_of_qubits, normalize)
+    statevector, n = amplitude_statevector(data, num_of_qubits)
     qc = Circuit(n)
     qc.initial_state = statevector
     qc.statevector = statevector
