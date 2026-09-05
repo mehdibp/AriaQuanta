@@ -6,14 +6,7 @@ from AriaQuanta.aqc.circuit import Circuit
 from AriaQuanta.aqc.gatelibrary import Custom, X, Y, Z, H
 
 
-# -------------------------------------------------------------------------------------------
-# Small shared kernel used by AriaQuanta.qml.encoding.hamiltonian and every
-# AriaQuanta.qml.feature_map -- both need to turn a string of Pauli letters into a matrix,
-# just in slightly different ways (padded to the full circuit vs. left as a small block for
-# GateCustom's own embedding). Kept here, one level above encoding/feature_map/ansatz, so
-# neither sub-package has to import from the other for it.
-# -------------------------------------------------------------------------------------------
-
+# Small shared kernel used by AriaQuanta.qml.feature_map ------------------------------------
 PAULI_MATRIX = {'X': X().matrix, 'Y': Y().matrix, 'Z': Z().matrix, 'I': np.eye(2, dtype=complex)}
 
 # -------------------------------------------------------------------------------------------
@@ -137,3 +130,5 @@ def apply_pauli_feature_layer(target: Circuit, features: np.ndarray, blocks: Lis
             phi = data_map(features, qubits)
             matrix = pauli_evolution_matrix(block, phi)
             target | Custom(matrix=matrix, target_qubits=list(qubits), name='P[{}]'.format(block))
+
+

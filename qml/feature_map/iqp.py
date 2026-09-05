@@ -5,7 +5,7 @@ from AriaQuanta.qml.feature_map.pauli import pauli_feature_map
 from AriaQuanta.qml.feature_map.unit import default_data_map
 
 
-# -------------------------------------------------------------------------------------------
+# Instantaneous Quantum Polynomial ----------------------------------------------------------
 def iqp_feature_map(data, degree: int=2, reps: int=1, entanglement: Union[str, Sequence]='full',
                      num_of_qubits: Optional[int]=None, data_map=default_data_map) -> Circuit:
     """
