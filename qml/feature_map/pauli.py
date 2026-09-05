@@ -1,8 +1,8 @@
 from typing import Optional, Sequence, Union
 
 from AriaQuanta.aqc.circuit import Circuit
-from AriaQuanta.qml.encoding.validation import validate_features
-from AriaQuanta.qml.feature_map.unit import validate_pauli_blocks, apply_pauli_feature_layer, default_data_map
+from AriaQuanta.qml._shared import validate_features, validate_pauli_blocks
+from AriaQuanta.qml.feature_map.unit import apply_pauli_feature_layer, default_data_map
 
 
 # -------------------------------------------------------------------------------------------

@@ -3,7 +3,7 @@ from typing import List, Optional, Union
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit
 from AriaQuanta.aqc.gatelibrary import X
-from AriaQuanta.qml.encoding.validation import validate_binary_data
+from AriaQuanta.qml._shared import validate_binary_data
 
 
 # -------------------------------------------------------------------------------------------

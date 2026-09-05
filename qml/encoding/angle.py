@@ -2,7 +2,7 @@ from typing import Optional, Sequence, Union
 
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit
-from AriaQuanta.qml.encoding.validation import validate_rotation_names, validate_features, ROTATION_GATES
+from AriaQuanta.qml._shared import validate_rotation_names, validate_features, ROTATION_GATES
 
 
 # -------------------------------------------------------------------------------------------

@@ -3,7 +3,7 @@ from typing import Optional, Sequence, Union
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.ansatz import Ansatz
 from AriaQuanta.aqc.gatelibrary import CX
-from AriaQuanta.qml.encoding.validation import validate_rotation_names, validate_features, TRAINABLE_ROTATION_GATES, ROTATION_GATES
+from AriaQuanta.qml._shared import validate_rotation_names, validate_features, TRAINABLE_ROTATION_GATES, ROTATION_GATES
 
 
 # -------------------------------------------------------------------------------------------

@@ -4,8 +4,9 @@ from scipy.linalg import expm
 
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit
-from AriaQuanta.aqc.gatelibrary import Custom, X, Y, Z
+from AriaQuanta.aqc.gatelibrary import Custom
 from AriaQuanta.algorithms.eigen_solver import Hamiltonian, _parse_pauli_string
+from AriaQuanta.qml._shared import PAULI_MATRIX
 
 
 # NOTE: `_parse_pauli_string` is reused as-is from AriaQuanta.algorithms.eigen_solver rather
@@ -13,8 +14,6 @@ from AriaQuanta.algorithms.eigen_solver import Hamiltonian, _parse_pauli_string
 # across expectation-value estimation (VQE/QAOA) and encoding. It's currently a private
 # helper of eigen_solver; if this cross-module reuse feels wrong, the fix is just to drop
 # the leading underscore and export it from eigen_solver as a small public utility.
-
-_PAULI_MATRIX = {'X': X().matrix, 'Y': Y().matrix, 'Z': Z().matrix}
 
 
 # ------------------------------------------------------------
@@ -78,12 +77,11 @@ def hamiltonian_matrix(pauli_strings: Sequence[str], coefficients: Sequence[floa
         matrix = matrix + coef * _term_matrix(pauli_string, num_of_qubits)
     return matrix
 
-
 # ------------------------------------------------------------
 def _term_matrix(pauli_string: str, num_of_qubits: int) -> np.ndarray:
     active = dict(_parse_pauli_string(pauli_string, num_of_qubits))   # {qubit: 'X'|'Y'|'Z'}
     matrix = np.array([[1.0]], dtype=complex)
     for q in range(num_of_qubits):
-        block = _PAULI_MATRIX[active[q]] if q in active else np.eye(2, dtype=complex)
+        block = PAULI_MATRIX[active[q]] if q in active else np.eye(2, dtype=complex)
         matrix = np.kron(matrix, block)
     return matrix

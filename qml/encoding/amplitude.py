@@ -2,7 +2,7 @@ from typing import Optional
 
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit
-from AriaQuanta.qml.encoding.validation import validate_features
+from AriaQuanta.qml._shared import validate_features
 
 
 # ------------------------------------------------------------

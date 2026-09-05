@@ -1,4 +1,4 @@
-from typing import List, Optional, Sequence, Union
+from typing import List, Sequence, Union
 
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.gatelibrary import RX, RY, RZ, P
@@ -44,3 +44,16 @@ def validate_binary_data(data) -> List[int]:
             raise ValueError("basis_encoding expects 0/1 values, got {}.".format(value))
         bits.append(rounded)
     return bits
+
+
+
+# ------------------------------------------------------------
+def validate_pauli_blocks(paulis: Union[str, Sequence[str]]) -> List[str]:
+    blocks = [paulis] if isinstance(paulis, str) else list(paulis)
+    if not blocks:
+        raise ValueError("'paulis' must name at least one Pauli block (e.g. 'Z' or ['Z', 'ZZ']).")
+    for b in blocks:
+        if not isinstance(b, str) or not b or any(c not in 'XYZ' for c in b):
+            raise ValueError("Each Pauli block must be a non-empty string over {{X, Y, Z}}, got {!r}.".format(b))
+    return blocks
+
