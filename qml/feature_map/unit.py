@@ -32,8 +32,7 @@ def default_data_map(features: np.ndarray, qubits: Tuple[int, ...]) -> float:
 
 # -------------------------------------------------------------------------------------------
 def apply_pauli_feature_layer(target: Circuit, features: np.ndarray, blocks: List[str],
-                               entanglement: Union[str, Sequence[Tuple[int, ...]]] = 'full',
-                               data_map=default_data_map) -> None:
+                               entanglement: Union[str, Sequence[Tuple[int, ...]]]='full', data_map=default_data_map) -> None:
     """
     Applies one repetition of a Havlicek-style Pauli feature map onto `target` (a Circuit,
     via its '|' operator): a Hadamard on every qubit, followed by exp(-i * phi_S(x) * P_S)

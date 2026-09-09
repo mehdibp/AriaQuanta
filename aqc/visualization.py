@@ -4,12 +4,14 @@ import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.measure import Measure
 from AriaQuanta.aqc.operations import Operations
 from AriaQuanta.aqc.circuit import Circuit
 from AriaQuanta.aqc.gatelibrary.gatebase import GateBase
+from AriaQuanta.aqc.gatelibrary import Custom
 
 
 # -------------------------------------------------------------------------------------------
@@ -30,6 +32,10 @@ DEFAULT_STYLE: Dict[str, Any] = {
     'small_fontsize':   10,
     'figsize_scale_x':  1.4,
     'figsize_scale_y':  0.9,
+    # -- column auto-width (see CircuitVisualizer._layout_columns) -------------------------
+    'auto_column_width':   True,  # widen a column when one of its gates would otherwise overlap its neighbours
+    'column_width_margin': 1.15,  # extra breathing room applied on top of a gate's measured width
+    'column_edge_pad':     0.5,   # fixed padding left of the first / right of the last column
 }
 
 
@@ -64,27 +70,31 @@ class CircuitVisualizer:
         x_ids = self._assign_columns(gates)
         max_col = max(x_ids)
 
-        fig, ax = plt.subplots(figsize=((max_col + 2) * style['figsize_scale_x'], total_rows * style['figsize_scale_y']))
+        col_positions, right_edge = self._layout_columns(gates, x_ids, max_col, total_rows, style)
 
-        xx = [min(x_ids) - 0.5] + x_ids + [max(x_ids) + 0.5]
+        pad = style['column_edge_pad']
+        fig, ax = plt.subplots(figsize=((right_edge + 0.5 + 2*pad) * style['figsize_scale_x'], total_rows*style['figsize_scale_y']))
+
+        xx = [-0.5, right_edge]
         self._draw_wires(ax, xx, num_of_qubits, clbit_row, style)
 
         for i, gate_i in enumerate(gates):
             gate_i_name = gate_i.name
             condition_info = None
+            pos_i = col_positions[x_ids[i]]
 
             if isinstance(gate_i, Operations):
                 condition_info = (gate_i_name, gate_i.conditions)
                 gate_i = gate_i.operation_gate
                 gate_i_name = gate_i.name        # re-resolve the name AFTER unwrapping
 
-            plot_func = self.gate_plotters.get(gate_i_name, plot_default)
-            plot_func(ax, x_ids[i], gate_i, style)
+            plot_func = self._get_gate_plotter(gate_i)
+            plot_func(ax, pos_i, gate_i, style)
 
             if isinstance(gate_i, Measure):
-                self._draw_measure_connector(ax, x_ids[i], gate_i, clbit_row, style)
+                self._draw_measure_connector(ax, pos_i, gate_i, clbit_row, style)
             if condition_info is not None:
-                self._draw_condition_connector(ax, x_ids[i], gate_i, condition_info, clbit_row, style)
+                self._draw_condition_connector(ax, pos_i, gate_i, condition_info, clbit_row, style)
 
         self._finalize(fig, ax, save_path, show)
         return fig, ax
@@ -111,6 +121,25 @@ class CircuitVisualizer:
         return [str(c) for c in clbits]
 
     # ------------------------------------------------------------
+    @staticmethod
+    def _draw_clbit_bus_tick(ax: Axes, x: float, row: float, n_clbits: int, style: Dict[str, Any]) -> None:
+        # Qiskit's usual marker for "n classical bits bundled into one wire": a short
+        # double-diagonal slash across the wire, with the bit count written above it.
+        dx, dy = 0.045, 0.16
+        for offset in (-0.035, 0.035):
+            ax.plot([x + offset - dx, x + offset + dx], [row + dy, row - dy],
+                    color=style['color_clbit_wire'], linewidth=1.2)
+        ax.text(x + 0.09, row - dy - 0.05, str(n_clbits), fontsize=style['small_fontsize'],
+                ha='left', va='bottom', color=style['color_clbit_wire'])
+
+    # ------------------------------------------------------------
+    def _get_gate_plotter(self, gate: GateBase) -> Callable:
+        if isinstance(gate, Custom):
+            return plot_custom
+
+        return self.gate_plotters.get(gate.name, plot_default)
+
+    # ------------------------------------------------------------
     def _assign_columns(self, gates: List[GateBase]) -> List[int]:
         num_of_qubits = self.circuit.num_of_qubits
         next_free_column = [0] * num_of_qubits
@@ -118,6 +147,7 @@ class CircuitVisualizer:
         x_ids: List[int] = []
         for gate in gates:
             qubits = gate.qubits
+            if isinstance(gate, Measure): qubits = [qubits[0], num_of_qubits-1]
             span = range(min(qubits), max(qubits) + 1)
             column = max(next_free_column[q] for q in span)
             x_ids.append(column)
@@ -125,6 +155,80 @@ class CircuitVisualizer:
                 next_free_column[q] = column + 1
 
         return x_ids
+
+    # ------------------------------------------------------------
+    def _layout_columns(self, gates: List[GateBase], x_ids: List[int], max_col: int, total_rows: int, style: Dict[str, Any]) -> Tuple[List[float], float]:
+        """
+        Decide the actual x-center of every gate column.
+
+        Every column defaults to the original 1.0-unit width. But a gate's label can render
+        wider than that -- most commonly a rotation gate carrying a long, unbound parameter
+        *name* instead of a short numeric angle (e.g. RY('theta_l3_q2_RY', 2)) -- in which
+        case its box overlaps whatever is drawn in the neighbouring column.
+
+        To catch this without duplicating every gate_plotter's text-formatting logic, the
+        circuit is first drawn once on a throwaway, non-visible figure at the plain 1-unit
+        spacing. Each gate's own text/box artists are then measured (via matplotlib's
+        renderer, so this works for any current or future gate_plotter, not just the
+        rotation gates that motivated this), and any column whose widest gate exceeds one
+        unit is widened to fit it -- every other column is left untouched.
+
+        :return: (col_positions, right_edge) -- col_positions[c] is the x-center to use for
+                 column c in the real drawing; right_edge is the x-coordinate just past the
+                 last column, for sizing the figure/wires.
+        """
+        if not style.get('auto_column_width', True):
+            positions = [float(c) for c in range(max_col + 1)]
+            return positions, max_col + 0.5
+
+        pad = style['column_edge_pad']
+        naive_right_edge = max_col + 0.5
+        probe_fig = Figure(figsize=((naive_right_edge + 0.5 + 2 * pad) * style['figsize_scale_x'],
+                                     total_rows * style['figsize_scale_y']))
+        FigureCanvasAgg(probe_fig)
+        probe_ax = probe_fig.add_subplot(111)
+        # Same explicit-limits convention _draw_wires uses for the real draw (see the note
+        # there) -- inches-per-data-unit must match exactly, or this measurement pass's
+        # widths won't mean what they're assumed to mean once the real figure is drawn.
+        probe_ax.set_xlim(-0.5 - pad, naive_right_edge + pad)
+        probe_ax.set_ylim(total_rows - 0.5, -0.5)     # inverted, matching the real diagram
+
+        gate_artist_ranges: List[Tuple[int, int, int, int, int]] = []
+        for i, gate_i in enumerate(gates):
+            gate_i_plot = gate_i.operation_gate if isinstance(gate_i, Operations) else gate_i
+            plot_func = self.gate_plotters.get(gate_i_plot.name, plot_default)
+
+            texts_before, patches_before = len(probe_ax.texts), len(probe_ax.patches)
+            plot_func(probe_ax, x_ids[i], gate_i_plot, style)
+            gate_artist_ranges.append( (x_ids[i], texts_before, len(probe_ax.texts), patches_before, len(probe_ax.patches)) )
+
+        probe_fig.canvas.draw()
+        renderer = probe_fig.canvas.get_renderer()
+        inv = probe_ax.transData.inverted()
+
+        margin = style['column_width_margin']
+        col_width: Dict[int, float] = {}
+        for col, t0, t1, p0, p1 in gate_artist_ranges:
+            artists = list(probe_ax.texts[t0:t1]) + list(probe_ax.patches[p0:p1])
+            if not artists:
+                continue     # e.g. plain SWAP/ISWAP -- fixed-size markers only, never overflows
+
+            extents = [(a.get_bbox_patch() or a if hasattr(a, 'get_bbox_patch') else a).get_window_extent(renderer=renderer) for a in artists]
+            x0_disp = min(e.x0 for e in extents)
+            x1_disp = max(e.x1 for e in extents)
+            (x0_data, _), (x1_data, _) = inv.transform([(x0_disp, 0), (x1_disp, 0)])
+
+            required_width = (x1_data - x0_data) * margin
+            col_width[col] = max(col_width.get(col, 1.0), required_width)
+
+        col_positions: List[float] = []
+        cum = -0.5
+        for c in range(max_col + 1):
+            width = max(1.0, col_width.get(c, 1.0))
+            col_positions.append(cum + width / 2)
+            cum += width
+
+        return col_positions, cum
 
     # ------------------------------------------------------------
     def _classical_bit_rows(self, gates: List[GateBase]) -> Dict[str, int]:
@@ -141,7 +245,7 @@ class CircuitVisualizer:
         for i in range(num_rows - len(clbit_names)):
             clbit_names.append('c{}'.format(len(clbit_names) + i))
 
-        return {name: num_of_qubits + row for row, name in enumerate(clbit_names)}
+        return {name: num_of_qubits for name in clbit_names}
 
     # ------------------------------------------------------------
     def _draw_wires(self, ax: Axes, xx: List[float], num_of_qubits: int, clbit_row: Dict[str, int], style: Dict[str, Any]) -> None:
@@ -152,19 +256,24 @@ class CircuitVisualizer:
             ax.plot(xx_arr, row_i, '-', color=style['color_wire'])
             ax.text(xx_arr[0] - 0.5, i, 'Q{}:'.format(i), fontsize=style['fontsize'], ha='center', va='center')
 
-        for name, row in clbit_row.items():
+        if clbit_row:
+            # every classical bit is bundled onto this single row/wire (see _classical_bit_rows)
+            row = next(iter(clbit_row.values()))
             row_arr = np.ones(xx_arr.shape) * row
             # a pair of close parallel lines is the standard symbol for a classical wire
             ax.plot(xx_arr, row_arr - 0.03, '-', color=style['color_clbit_wire'], linewidth=1)
             ax.plot(xx_arr, row_arr + 0.03, '-', color=style['color_clbit_wire'], linewidth=1)
-            ax.text(xx_arr[0] - 0.5, row, '{}:'.format(name), fontsize=style['small_fontsize'],
-                    ha='center', va='center', color=style['color_clbit_wire'])
+            ax.text(xx_arr[0] - 0.5, row, 'c:', fontsize=style['small_fontsize'], ha='center', va='center', color=style['color_clbit_wire'])
+            self._draw_clbit_bus_tick(ax, xx_arr[0] - 0.15, row, len(clbit_row), style)
 
         ax.invert_yaxis()
-        plt.xlabel('Gate Sequence')
-        plt.ylabel('Qubits')
-        plt.axis('off')
-        ax.margins(x=0.15, y=0.15)
+        ax.set_xlabel('Gate Sequence')
+        ax.set_ylabel('Qubits')
+        ax.axis('off')
+        
+        pad = style['column_edge_pad']
+        ax.set_xlim(xx_arr[0] - pad, xx_arr[-1] + pad)
+        ax.margins(y=0.15)
 
     # ------------------------------------------------------------
     def _draw_measure_connector(self, ax: Axes, i: float, gate_i: GateBase, clbit_row: Dict[str, int], style: Dict[str, Any]) -> None:
@@ -174,6 +283,7 @@ class CircuitVisualizer:
                 continue
             ax.plot([i, i], [q + 0.4, row - 0.08], '-', color=style['color_clbit_wire'], linewidth=1)
             ax.plot(i, row - 0.08, marker='v', color=style['color_clbit_wire'], markersize=6)
+            ax.text(i+0.1, row-0.15, c, fontsize=style['small_fontsize'], ha='left', va='center', color=style['color_clbit_wire'])
 
     # ------------------------------------------------------------
     def _draw_condition_connector(self, ax: Axes, i: float, gate_i: GateBase, condition_info: Tuple[str, Any], clbit_row: Dict[str, int], style: Dict[str, Any]) -> None:
@@ -591,21 +701,21 @@ def plot_cnu(ax: Axes, i: float, gate_i: GateBase, style: Dict[str, Any]) -> Non
 # Gate Custom -------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------
 @register_gate_plotter('Custom')
-def plot_custom(ax: Axes, i: float, gate_i: Any, style: Dict[str, Any]) -> None:
+def plot_custom(ax: Axes, i: float, gate_i: Custom, style: Dict[str, Any]) -> None:
     q = gate_i.qubits
     q_min, q_max = min(q), max(q)
     height = abs(q_max - q_min) + 0.8
     width = 0.8
     rect = Rectangle((i - 0.4, q_min - 0.4), width, height, facecolor=style['color_custom'], zorder=2, edgecolor='k')
     ax.add_patch(rect)
-    ax.text(i - 0.4 + 0.5 * width, (q_min + q_max) / 2, 'U', ha='center', va='center', fontsize=style['fontsize'])
+    ax.text(i - 0.4 + 0.5 * width, (q_min + q_max) / 2, gate_i.name, ha='center', va='center', fontsize=style['fontsize'])
 
 
 # Measurement -------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------
 @register_gate_plotter('MeasureQubitResize')
 @register_gate_plotter('MeasureQubit')
-def plot_measure(ax: Axes, i: float, gate_i: Any, style: Dict[str, Any]) -> None:
+def plot_measure(ax: Axes, i: float, gate_i: Measure, style: Dict[str, Any]) -> None:
     t = np.linspace(0, 2 * np.pi, 100)
     for q in gate_i.qubits:
         # draw back-to-front: background box, then the meter needle, then the arrow glyph on top

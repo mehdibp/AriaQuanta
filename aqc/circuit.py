@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 from AriaQuanta._utils import np, reorder_state
 from AriaQuanta.aqc.qubit import Qubit, MultiQubit
 from AriaQuanta.aqc.gatelibrary import Custom
-from AriaQuanta.aqc.measure import Measure
+from AriaQuanta.aqc.measure import Measure, MeasureQubit
 from AriaQuanta.aqc.operations import Operations
 from AriaQuanta.aqc.gatelibrary.gatebase import GateBase
 from AriaQuanta.aqc.gatelibrary import GateSingleQubit
@@ -49,15 +49,21 @@ class Circuit:
             raise ValueError("{} is out-of-range for the qubit ID. The valid ID is between 0 to {}"
                              .format(max(gate.qubits),self.num_of_qubits-1)) 
 
-        if isinstance(gate, GateSingleQubit):
-            target_qubits = gate.target_qubits
-            size_target_qubits = np.size(target_qubits)
-            for i in range(size_target_qubits):
+        if isinstance(gate, (GateSingleQubit, MeasureQubit)):
+            attr_name = 'target_qubits' if isinstance(gate, GateSingleQubit) else 'qubits'
+            qubit_list = getattr(gate, attr_name)
+
+            for i, q in enumerate(qubit_list):
                 gate_copy = deepcopy(gate)
-                gate_copy.target_qubits = [target_qubits[i]]
+                setattr(gate_copy, attr_name, [q])
+
+                if hasattr(gate_copy, 'clbits') and gate_copy.clbits is not None:
+                    if i < len(gate_copy.clbits):
+                        gate_copy.clbits = [gate_copy.clbits[i]]
+
                 self.gates.append(gate_copy)
         else:
-            self.gates.append(gate)   
+            self.gates.append(gate)
 
     # ------------------------------------------------------------
     def run(self) -> np.ndarray:
@@ -254,7 +260,7 @@ def sv_to_probabilty(statevector: np.ndarray, plot: bool=True) -> Dict[str, floa
     return probabilities_dict
 
 # quantum circuit ---------------------------------------------------------------------------  
-def to_gate(qc: Circuit):
+def to_gate(qc: Circuit, name: str='Circuit_gate'):
 
     num_of_qubits = qc.num_of_qubits
 
@@ -279,6 +285,6 @@ def to_gate(qc: Circuit):
     
     circuit_gate = Custom(matrix=A, target_qubits=list(range(0, num_of_qubits)))
     circuit_gate.matrix = A
-    circuit_gate.name = 'Circuit_gate'
+    circuit_gate.name = name
 
     return circuit_gate
