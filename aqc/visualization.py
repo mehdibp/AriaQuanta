@@ -24,6 +24,7 @@ DEFAULT_STYLE: Dict[str, Any] = {
     'color_cu':         '#ffa621',      # CU / CNU
     'color_custom':     '#ebe2c7',      # Custom gate box
     'color_measure':    '#ededed',      # Measure box background
+    'color_barrier':    '#8c8c8c',      # Barrier separator line
     'color_wire':       'k',            # quantum wire
     'color_clbit_wire': 'gray',         # classical (double-line) wire
     'color_if_true':    'black',        # If_cbit connector, expected value == 1 -> filled dot
@@ -731,4 +732,17 @@ def plot_measure(ax: Axes, i: float, gate_i: Measure, style: Dict[str, Any]) -> 
         ax.plot(xx[idx], yy[idx], color='black', zorder=2)
 
         ax.text(i, q, u"\u2197", fontsize=27, ha='center', va='center', zorder=3)
+
+
+# Barrier -----------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
+@register_gate_plotter('Barrier')
+def plot_barrier(ax: Axes, i: float, gate_i: GateBase, style: Dict[str, Any]) -> None:
+    q_min, q_max = min(gate_i.qubits), max(gate_i.qubits)
+    ax.plot([i, i], [q_min - 0.5, q_max + 0.5], linestyle='--', color=style['color_barrier'], linewidth=1.5, zorder=5)
+
+    width, height = 0.12, q_max-q_min+1.2
+    rect = Rectangle((i-0.06, -0.6), width, height, facecolor=style['color_measure'], zorder=1)
+    ax.add_patch(rect)
+
 

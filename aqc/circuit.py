@@ -4,11 +4,9 @@ from typing import Dict, List, Optional
 
 from AriaQuanta._utils import np, reorder_state
 from AriaQuanta.aqc.qubit import Qubit, MultiQubit
-from AriaQuanta.aqc.gatelibrary import Custom
 from AriaQuanta.aqc.measure import Measure, MeasureQubit
 from AriaQuanta.aqc.operations import Operations
-from AriaQuanta.aqc.gatelibrary.gatebase import GateBase
-from AriaQuanta.aqc.gatelibrary import GateSingleQubit
+from AriaQuanta.aqc.gatelibrary import GateBase, GateSingleQubit, Custom, Barrier
 
 
 # -------------------------------------------------------------------------------------------
@@ -44,6 +42,7 @@ class Circuit:
 
     # ------------------------------------------------------------
     def add_gate(self, gate: GateBase) -> None:
+        if isinstance(gate, Barrier): gate = gate._resolved_for(self.num_of_qubits)
 
         if max(gate.qubits) >= self.num_of_qubits:
             raise ValueError("{} is out-of-range for the qubit ID. The valid ID is between 0 to {}"

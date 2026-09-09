@@ -4,8 +4,8 @@ from typing import List, Optional, Tuple, Union
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit
 from AriaQuanta.aqc.qubit import Qubit
-from AriaQuanta.aqc.gatelibrary import RY, RZ, CX, CRX, RXX, RYY, GateSingleQubit
-from AriaQuanta.aqc.gatelibrary.gatebase import GateBase
+from AriaQuanta.aqc.measure import Measure, MeasureQubit
+from AriaQuanta.aqc.gatelibrary import GateBase, GateSingleQubit, RY, RZ, CX, CRX, RXX, RYY, Barrier
 
 
 # parametrized circuit ----------------------------------------------------------------------
@@ -51,17 +51,24 @@ class Ansatz(Circuit):
 
     # ------------------------------------------------------------
     def add_gate(self, gate: GateBase) -> None:
+        if isinstance(gate, Barrier): gate = gate._resolved_for(self.num_of_qubits)
 
         if max(gate.qubits) >= self.num_of_qubits:
-            raise ValueError("{} is out-of-range for the qubit ID. The valid ID is between 0 and {}".format(max(gate.qubits), self.num_of_qubits - 1))
+            raise ValueError("{} is out-of-range for the qubit ID. The valid ID is between 0 to {}"
+                             .format(max(gate.qubits),self.num_of_qubits-1)) 
 
-        # a single-qubit gate applied to several target qubits at once is split into one
-        # independent gate (and its own parameter binding) per qubit -- mirrors Circuit.add_gate
-        if isinstance(gate, GateSingleQubit):
-            target_qubits = gate.target_qubits
-            for tq in target_qubits:
+        if isinstance(gate, (GateSingleQubit, MeasureQubit)):
+            attr_name = 'target_qubits' if isinstance(gate, GateSingleQubit) else 'qubits'
+            qubit_list = getattr(gate, attr_name)
+
+            for i, q in enumerate(qubit_list):
                 gate_copy = deepcopy(gate)
-                gate_copy.target_qubits = [tq]
+                setattr(gate_copy, attr_name, [q])
+
+                if hasattr(gate_copy, 'clbits') and gate_copy.clbits is not None:
+                    if i < len(gate_copy.clbits):
+                        gate_copy.clbits = [gate_copy.clbits[i]]
+
                 self._register_params(gate_copy)
                 self.gates.append(gate_copy)
         else:

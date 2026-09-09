@@ -1,6 +1,8 @@
 
 # init, AriaQuanta.aqc.gatelibrary
 
+from .gatebase import GateBase
+
 #------------------------------------------------------------------------------------
 from .gatesingle import *
 """
@@ -41,14 +43,6 @@ from .gatedouble import *
 """
 
 #------------------------------------------------------------------------------------
-# from .arxived_gatetriple import *
-# """
-#     GateTripleQubit,
-#     CCXold,
-#     CSWAPold,
-# """
-
-#------------------------------------------------------------------------------------
 from .gatecustom import *
 """
     GateCustom,
@@ -73,5 +67,11 @@ from .gatecontrol import *
 #------------------------------------------------------------------------------------
 from .gatecontroln import *
 """
+    CNX
+    CNY
     CNZ
+    CNP
+    CNU
 """
+
+from .barrier import Barrier
