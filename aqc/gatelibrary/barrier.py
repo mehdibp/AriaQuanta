@@ -1,4 +1,5 @@
 from typing import List, Optional
+from AriaQuanta._utils import np
 
 
 # -------------------------------------------------------------------------------------------
@@ -32,6 +33,12 @@ class Barrier:
 
     def _resolved_for(self, num_of_qubits: int) -> "Barrier":
         return self if self._target_qubits is not None else Barrier(target_qubits=list(range(num_of_qubits)))
+
+    def apply(self, num_of_qubits: int, multistate: np.ndarray) -> np.ndarray:
+        return multistate
+
+    def apply_density(self, num_of_qubits: int, density_matrix: np.ndarray) -> np.ndarray:
+        return density_matrix
 
     def __repr__(self) -> str:
         return "Barrier(qubits={})".format(self._target_qubits)

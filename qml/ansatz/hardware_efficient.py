@@ -1,7 +1,7 @@
 from typing import Sequence, Tuple, Union
 
 from AriaQuanta.aqc.ansatz import Ansatz
-from AriaQuanta.aqc.gatelibrary import CX, CZ
+from AriaQuanta.aqc.gatelibrary import CX, CZ, Barrier
 from AriaQuanta.qml._shared import TRAINABLE_ROTATION_GATES, validate_rotation_names, resolve_qubit_subsets
 
 
@@ -63,6 +63,7 @@ class HardwareEfficientAnsatz(Ansatz):
             if layer < reps:
                 for i, j in pairs:
                     self.add_gate(entangler_cls(i, j))
+            self.add_gate(Barrier())
 
     # ------------------------------------------------------------
     @staticmethod

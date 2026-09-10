@@ -32,7 +32,7 @@ DEFAULT_STYLE: Dict[str, Any] = {
     'fontsize':         12,
     'small_fontsize':   10,
     'figsize_scale_x':  1.4,
-    'figsize_scale_y':  0.9,
+    'figsize_scale_y':  0.75,
     # -- column auto-width (see CircuitVisualizer._layout_columns) -------------------------
     'auto_column_width':   True,  # widen a column when one of its gates would otherwise overlap its neighbours
     'column_width_margin': 1.15,  # extra breathing room applied on top of a gate's measured width

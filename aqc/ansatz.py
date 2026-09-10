@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import List, Optional, Tuple, Union
+from typing import List, Dict, Optional, Tuple, Union
 
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit
@@ -20,9 +20,9 @@ class Ansatz(Circuit):
 
         #  ansatz = Ansatz(2, ['theta1'])
         #  ansatz | H(1) | RX('theta1',0) | H(0) | CX(0,1)
-        self.params_names: List[str] = list(params_names)                        # ['theta1']
-        self.params_values: np.ndarray = np.zeros(len(self.params_names))        # bound numeric values (0.0 until set)
-        self.params_gates: List[Tuple[GateBase, str, int]] = []                  # [(gate, attribute_name, params_names index), ...]
+        self.params_names: List[str] = list(params_names)                   # ['theta1']
+        self.params_values: np.ndarray = np.zeros(len(self.params_names))   # bound numeric values (0.0 until set)
+        self.params_gates: List[Tuple[GateBase, str, int]] = []             # [(gate, attribute_name, params_names index), ...]
 
         super().__init__(num_of_qubits, num_of_clbits, num_of_ancilla, list_of_qubits)
 
@@ -31,13 +31,43 @@ class Ansatz(Circuit):
     def set_params_values(self, params_values: Union[List[float], np.ndarray]) -> None:
         params_values = np.asarray(params_values, dtype=float).flatten()
         if params_values.size != len(self.params_names):
-            raise ValueError( "Expected {} parameter value(s) for {}, got {}.".format(len(self.params_names), self.params_names, params_values.size) )
+            raise ValueError(
+                "Expected {} parameter value(s) for {}, got {}."
+                .format(len(self.params_names), self.params_names, params_values.size) 
+            )
 
         self.params_values = params_values
         for gate_i, key_i, index_i in self.params_gates:
             value_i = params_values[index_i]
             setattr(gate_i, key_i, value_i)
             gate_i.update_matrix()
+
+    # ------------------------------------------------------------
+    def bind_parameters(self, param_values: Dict[str, float]) -> None:
+        """
+        Bind a subset (or all) of this Ansatz's trainable parameters by name, e.g.
+        ansatz.bind_parameters({'theta_l0_q0_RY': 1.2, 'theta_l0_q1_RY': 0.5}).
+ 
+        This is the by-name counterpart to set_params_values() (which takes a flat,
+        positional array in self.params_names order) -- handy for manual/debugging runs
+        where you want to plug in specific numeric values without having to reconstruct
+        the exact params_names order yourself. Any parameter name not present in
+        param_values keeps its current value (0.0 until something has bound it).
+ 
+        :param param_values: {parameter_name: numeric_value}; every key must be one of self.params_names.
+        """
+        unknown = set(param_values) - set(self.params_names)
+        if unknown:
+            raise ValueError(
+                "Unknown parameter name(s) {}; must be a subset of self.params_names ({})."
+                .format(sorted(unknown), self.params_names)
+            )
+ 
+        values = np.array(self.params_values, dtype=float, copy=True)
+        for name, value in param_values.items():
+            index = self.params_names.index(name)
+            values[index] = value
+        self.set_params_values(values)
 
     # ------------------------------------------------------------
     def _register_params(self, gate: GateBase) -> None:

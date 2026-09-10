@@ -17,7 +17,7 @@ from AriaQuanta.qml._shared import PAULI_MATRIX
 
 
 # ------------------------------------------------------------
-def hamiltonian_encoding(data, pauli_strings: Sequence[str], t: float = 1.0, num_of_qubits: Optional[int] = None) -> Circuit:
+def hamiltonian_encoding(data, pauli_strings: Sequence[str], t: float=1.0, num_of_qubits: Optional[int]=None) -> Circuit:
     """
     Hamiltonian (time-evolution) encoding: builds a data-dependent Hamiltonian
     H(x) = sum_i x_i * P_i from the classical features x and a *fixed* list of Pauli
@@ -33,16 +33,12 @@ def hamiltonian_encoding(data, pauli_strings: Sequence[str], t: float = 1.0, num
     :param data: One coefficient per entry of pauli_strings (i.e. len(data) == len(pauli_strings)).
     :param pauli_strings: Fixed list of Pauli strings, e.g. ['Z0', 'Z1', 'X0X1'].
     :param t: Evolution time.
-    :param num_of_qubits: Number of qubits. Defaults to 1 + the highest qubit index
-                           referenced in pauli_strings.
+    :param num_of_qubits: Number of qubits. Defaults to 1 + the highest qubit index referenced in pauli_strings.
     :return: A new Circuit with U(x) applied as a single Custom gate (not yet run).
     """
     data_arr = np.asarray(data, dtype=float).flatten()
     if data_arr.size != len(pauli_strings):
-        raise ValueError(
-            "'data' must have one value per Pauli string ({}), got {}."
-            .format(len(pauli_strings), data_arr.size)
-        )
+        raise ValueError("'data' must have one value per Pauli string ({}), got {}.".format(len(pauli_strings), data_arr.size))
 
     hamiltonian = Hamiltonian(list(zip(pauli_strings, data_arr.tolist())))   # validates format/duplicates
 

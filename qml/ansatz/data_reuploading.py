@@ -2,7 +2,7 @@ from typing import Optional, Sequence, Union
 
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.ansatz import Ansatz
-from AriaQuanta.aqc.gatelibrary import CX
+from AriaQuanta.aqc.gatelibrary import CX, Barrier
 from AriaQuanta.qml._shared import validate_rotation_names, validate_features, TRAINABLE_ROTATION_GATES, ROTATION_GATES
 
 
@@ -91,4 +91,5 @@ class DataReUploadingAnsatz(Ansatz):
             if entangle and n > 1:              # ring entangler
                 for q in range(n):
                     self.add_gate(CX(q, (q + 1) % n))
+            self.add_gate(Barrier())
 

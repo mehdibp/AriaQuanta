@@ -2,7 +2,7 @@ from typing import List, Tuple, Union, Sequence
 from AriaQuanta._utils import np
 
 from AriaQuanta.aqc.circuit import Circuit
-from AriaQuanta.aqc.gatelibrary import Custom, H
+from AriaQuanta.aqc.gatelibrary import Custom, H, Barrier
 from AriaQuanta.qml._shared.pauli import pauli_evolution_matrix
 from AriaQuanta.qml._shared.connectivity import resolve_qubit_subsets
 
@@ -31,7 +31,7 @@ def default_data_map(features: np.ndarray, qubits: Tuple[int, ...]) -> float:
     return float(phi)
 
 # -------------------------------------------------------------------------------------------
-def apply_pauli_feature_layer(target: Circuit, features: np.ndarray, blocks: List[str],
+def apply_pauli_feature_layer(circute: Circuit, features: np.ndarray, blocks: List[str],
                                entanglement: Union[str, Sequence[Tuple[int, ...]]]='full', data_map=default_data_map) -> None:
     """
     Applies one repetition of a Havlicek-style Pauli feature map onto `target` (a Circuit,
@@ -45,14 +45,15 @@ def apply_pauli_feature_layer(target: Circuit, features: np.ndarray, blocks: Lis
     and encode nothing observable -- the Hadamards are what turn the data-dependent phases
     into something that shows up in measurement statistics/interference.
     """
-    n = target.num_of_qubits
+    n = circute.num_of_qubits
     for q in range(n):
-        target | H(q)
+        circute | H(q)
 
     for block in blocks:
         subsets = resolve_qubit_subsets(len(block), n, entanglement)
         for qubits in subsets:
             phi = data_map(features, qubits)
             matrix = pauli_evolution_matrix(block, phi)
-            target | Custom(matrix=matrix, target_qubits=list(qubits), name='P[{}]'.format(block))
+            circute | Custom(matrix=matrix, target_qubits=list(qubits), name='P[{}]'.format(block))
+    circute | Barrier()
 
