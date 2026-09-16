@@ -42,7 +42,7 @@ class HardwareEfficientAnsatz(Ansatz):
         pairs     = resolve_qubit_subsets(2, num_of_qubits, entanglement)
         entangler_cls = _ENTANGLER_GATES[entangler]
 
-        num_of_layers = reps + 1
+        num_of_layers = reps
         params_names = [
             'theta_l{}_q{}_{}'.format(layer, q, name)
             for layer in range(num_of_layers) for q in range(num_of_qubits) for name in rotations

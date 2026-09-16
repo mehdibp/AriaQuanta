@@ -6,18 +6,20 @@ from AriaQuanta.qml.feature_map.unit import default_data_map
 
 
 # -------------------------------------------------------------------------------------------
-def z_feature_map(data, reps: int=2, num_of_qubits: Optional[int]=None, data_map=default_data_map) -> Circuit:
+def z_feature_map(data, reps: int=2, num_of_qubits: Optional[int]=None, 
+                  data_map=default_data_map, final_hadamard: bool=False) -> Circuit:
     """
     Z feature map: pauli_feature_map with only single-qubit Z blocks (no entangling terms).
     Equivalent to Qiskit's ZFeatureMap. Every qubit stays an independent product state
     throughout, so this is efficiently simulable classically -- mainly useful as a
     baseline/ablation against zz_feature_map / pauli_feature_map, which add entanglement.
     """
-    return pauli_feature_map(data, paulis=('Z',), reps=reps, num_of_qubits=num_of_qubits, data_map=data_map)
+    return pauli_feature_map(data, paulis=('Z',), reps=reps, 
+                             num_of_qubits=num_of_qubits, data_map=data_map, final_hadamard=final_hadamard)
 
 # -------------------------------------------------------------------------------------------
-def zz_feature_map(data, reps: int=2, entanglement: Union[str, Sequence]='full',
-                    num_of_qubits: Optional[int]=None, data_map=default_data_map) -> Circuit:
+def zz_feature_map(data, reps: int=2, entanglement: Union[str, Sequence]='full', num_of_qubits: Optional[int]=None, 
+                   data_map=default_data_map, final_hadamard: bool=False) -> Circuit:
     """
     ZZ feature map (Havlicek et al.'s main construction; matches Qiskit's ZZFeatureMap):
     pauli_feature_map with single-Z and pairwise-ZZ blocks. The most commonly used feature
@@ -26,4 +28,4 @@ def zz_feature_map(data, reps: int=2, entanglement: Union[str, Sequence]='full',
     quantum advantage for kernel-based classification/regression.
     """
     return pauli_feature_map(data, paulis=('Z', 'ZZ'), reps=reps, entanglement=entanglement, 
-                             num_of_qubits=num_of_qubits, data_map=data_map)
+                             num_of_qubits=num_of_qubits, data_map=data_map, final_hadamard=final_hadamard)

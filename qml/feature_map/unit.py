@@ -54,6 +54,10 @@ def apply_pauli_feature_layer(circute: Circuit, features: np.ndarray, blocks: Li
         for qubits in subsets:
             phi = data_map(features, qubits)
             matrix = pauli_evolution_matrix(block, phi)
-            circute | Custom(matrix=matrix, target_qubits=list(qubits), name='P[{}]'.format(block))
+            
+            name = ''
+            for b, q in zip(block, qubits): name = name + f'{b}{q}'
+            
+            circute | Custom(matrix=matrix, target_qubits=list(qubits), name=name)
     circute | Barrier()
 

@@ -12,7 +12,8 @@ class QAOA(VQE):
     def __init__(self, graph: Any, n_layers: int, num_of_iter_measure: int,
             initial_values: Union[List[float], np.ndarray], optimizer: str='COBYLA') -> None:
 
-        self._check_validation(graph, n_layers, num_of_iter_measure)
+        initial_values = np.asarray(initial_values, dtype=float).flatten()
+        self._check_validation(graph, n_layers, num_of_iter_measure, initial_values)
          
         self.graph = graph
         self.n_layers = n_layers
@@ -45,7 +46,7 @@ class QAOA(VQE):
 
     # ------------------------------------------------------------
     @staticmethod
-    def _check_validation(graph: Any, n_layers: int, num_of_iter_measure: int):
+    def _check_validation(graph: Any, n_layers: int, num_of_iter_measure: int, initial_values: Union[List[float], np.ndarray]):
         if not isinstance(n_layers, int) or isinstance(n_layers, bool):
             raise TypeError("'n_layers' must be an int, got {}.".format(type(n_layers).__name__))
         if n_layers < 1:
@@ -56,8 +57,6 @@ class QAOA(VQE):
             raise ValueError("'num_of_iter_measure' must be at least 1, got {}.".format(num_of_iter_measure))
         if graph.num_nodes() < 1:
             raise ValueError("'graph' must have at least one node.")
-
-        initial_values = np.asarray(initial_values, dtype=float).flatten()
         if initial_values.size != 2 * n_layers:
             raise ValueError( "'initial_values' must have length 2 * n_layers ({}), got {}.".format(2 * n_layers, initial_values.size) )
     

@@ -21,7 +21,8 @@ class VQE(): #, threshold, params_dict):
         :param optimizer: scipy.optimize.minimize method name (default 'COBYLA').
         """
         
-        self._check_validation(ansatz, hamiltonian, num_of_iter_measure, optimizer)
+        initial_values = np.asarray(initial_values, dtype=float).flatten()
+        self._check_validation(ansatz, hamiltonian, num_of_iter_measure, initial_values, optimizer)
 
         self.ansatz = ansatz
         self.hamiltonian = hamiltonian
@@ -82,7 +83,7 @@ class VQE(): #, threshold, params_dict):
 
     # ------------------------------------------------------------
     @staticmethod
-    def _check_validation(ansatz, hamiltonian, num_of_iter_measure, optimizer):
+    def _check_validation(ansatz, hamiltonian, num_of_iter_measure, initial_values, optimizer):
         if not isinstance(ansatz, Ansatz):
             raise TypeError("'ansatz' must be an Ansatz instance, got {}.".format(type(ansatz).__name__))
         if not isinstance(hamiltonian, Hamiltonian):
@@ -91,8 +92,6 @@ class VQE(): #, threshold, params_dict):
             raise TypeError("'num_of_iter_measure' must be an int, got {}.".format(type(num_of_iter_measure).__name__))
         if num_of_iter_measure < 1:
             raise ValueError("'num_of_iter_measure' must be at least 1, got {}.".format(num_of_iter_measure))
-
-        initial_values = np.asarray(initial_values, dtype=float).flatten()
         if initial_values.size != len(ansatz.params_names):
             raise ValueError( "'initial_values' must have length {} (= number of ansatz parameters), got {}.".format(len(ansatz.params_names), initial_values.size) )
         if not isinstance(optimizer, str) or not optimizer:

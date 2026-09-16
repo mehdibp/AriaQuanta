@@ -1,6 +1,7 @@
 from typing import Optional, Sequence, Union
 
 from AriaQuanta.aqc.circuit import Circuit
+from AriaQuanta.aqc.gatelibrary import H
 from AriaQuanta.qml._shared import validate_features, validate_pauli_blocks
 from AriaQuanta.qml.feature_map.unit import apply_pauli_feature_layer, default_data_map
 
@@ -8,7 +9,7 @@ from AriaQuanta.qml.feature_map.unit import apply_pauli_feature_layer, default_d
 # -------------------------------------------------------------------------------------------
 def pauli_feature_map(data, paulis: Union[str, Sequence[str]]=('Z', 'ZZ'), reps: int=2,
                        entanglement: Union[str, Sequence]='full', num_of_qubits: Optional[int]=None,
-                       data_map=default_data_map) -> Circuit:
+                       data_map=default_data_map, final_hadamard: bool=False) -> Circuit:
     """
     General Pauli feature map (Havlicek et al., "Supervised learning with quantum-enhanced
     feature spaces", Nature 2019): one classical feature per qubit, encoded through `reps`
@@ -35,6 +36,9 @@ def pauli_feature_map(data, paulis: Union[str, Sequence[str]]=('Z', 'ZZ'), reps:
                            per qubit).
     :param data_map: The phi_S(x) function. Defaults to the paper's phi_i(x) = x_i /
                       phi_S(x) = prod_{i in S}(pi - x_i). Signature: (features, qubit_tuple) -> float.
+    :param final_hadamard: If True, appends one more Hadamard layer after the last repetition, 
+                           so every block's data-dependent phase becomes visible to a direct Z-basis measurement 
+                           (see CAVEAT above). Default False, matching the standard Havlicek/Qiskit definition.
     :return: A new Circuit with the feature map applied (not yet run).
     """
     if reps < 1:
@@ -49,4 +53,8 @@ def pauli_feature_map(data, paulis: Union[str, Sequence[str]]=('Z', 'ZZ'), reps:
     qc = Circuit(n)
     for _ in range(reps):
         apply_pauli_feature_layer(qc, features, blocks, entanglement=entanglement, data_map=data_map)
+
+    if final_hadamard:
+        for q in range(n): qc | H(q)
+    
     return qc

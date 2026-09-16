@@ -8,6 +8,8 @@ from .validation import (
     validate_features,
     validate_binary_data,
     validate_pauli_blocks,
+    validate_parameter_shift,
+    validate_parameter_shift_expectation,
 )
 
 from .pauli import PAULI_MATRIX, pauli_tensor_matrix, pauli_evolution_matrix

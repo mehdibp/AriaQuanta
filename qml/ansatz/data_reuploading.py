@@ -47,9 +47,9 @@ class DataReUploadingAnsatz(Ansatz):
         if n_layers < 1:
             raise ValueError("'n_layers' must be at least 1, got {}.".format(n_layers))
 
+        features            = validate_features(data)
         encoding_rotations  = validate_rotation_names(encoding_rotation)
         trainable_rotations = validate_rotation_names(trainable_rotation, trainable=True)
-        features            = validate_features(data)
 
         features_per_qubit = len(encoding_rotations)
         n_needed = int(np.ceil(features.size / features_per_qubit))

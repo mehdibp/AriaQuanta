@@ -7,7 +7,7 @@ from AriaQuanta.qml.feature_map.unit import default_data_map
 
 # Instantaneous Quantum Polynomial ----------------------------------------------------------
 def iqp_feature_map(data, degree: int=2, reps: int=1, entanglement: Union[str, Sequence]='full',
-                     num_of_qubits: Optional[int]=None, data_map=default_data_map) -> Circuit:
+                     num_of_qubits: Optional[int]=None, data_map=default_data_map, final_hadamard: bool=True) -> Circuit:
     """
     IQP-style feature map: a Pauli feature map restricted to all-Z blocks up to `degree`
     qubits at once (single Z terms, plus ZZ, plus ZZZ, ... up to a 'Z'*degree block). Every
@@ -30,5 +30,5 @@ def iqp_feature_map(data, degree: int=2, reps: int=1, entanglement: Union[str, S
 
     paulis = tuple('Z' * k for k in range(1, degree+1))
     return pauli_feature_map(data, paulis=paulis, reps=reps, entanglement=entanglement,
-                              num_of_qubits=num_of_qubits, data_map=data_map)
+                              num_of_qubits=num_of_qubits, data_map=data_map, final_hadamard=final_hadamard)
 

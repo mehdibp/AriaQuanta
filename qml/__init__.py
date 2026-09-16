@@ -13,9 +13,9 @@
 #                          structure and their usual purpose (quantum kernels)
 #     ansatz/           <- trainable/variational circuits (hardware-efficient, data
 #                          re-uploading -- the latter is a hybrid: data AND weights)
-#     circuits/         <- general PQC infrastructure                           (not yet implemented)
 #     gradients/        <- parameter-shift rule and other gradient estimators   (not yet implemented)
 #     training/         <- hybrid quantum-classical optimization loops          (not yet implemented)
+#     circuits/         <- general PQC infrastructure                           (not yet implemented)
 #     models/           <- ready-made models such as VQC                        (not yet implemented)
 #
 # Each future sub-package gets its own __init__.py exporting its public names, mirroring how
@@ -40,3 +40,10 @@ from .ansatz import (
     HardwareEfficientAnsatz,
     DataReUploadingAnsatz,
 )
+
+from .gradients import (
+    parameter_shift_gradient,
+    parameter_shift_gradient_expectation,
+)
+
+ 

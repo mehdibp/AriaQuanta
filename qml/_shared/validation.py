@@ -1,7 +1,9 @@
-from typing import List, Sequence, Union
+from typing import List, Sequence, Union, Callable
 
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.gatelibrary import RX, RY, RZ, P
+from AriaQuanta.aqc.ansatz import Ansatz
+from AriaQuanta.algorithms.eigen_solver import Hamiltonian
 
 
 # P has no symbolic-parameter support (see gatesingle.P), so it's excluded from anything that
@@ -56,4 +58,33 @@ def validate_pauli_blocks(paulis: Union[str, Sequence[str]]) -> List[str]:
         if not isinstance(b, str) or not b or any(c not in 'XYZ' for c in b):
             raise ValueError("Each Pauli block must be a non-empty string over {{X, Y, Z}}, got {!r}.".format(b))
     return blocks
+
+
+# ------------------------------------------------------------
+def validate_parameter_shift(ansatz: Ansatz, evaluate_fn: Callable[[Ansatz], float], shift: float, base_values: np.array) -> None:
+    if not isinstance(ansatz, Ansatz):
+        raise TypeError("'ansatz' must be an Ansatz instance, got {}.".format(type(ansatz).__name__))
+    if not callable(evaluate_fn):
+        raise TypeError("'evaluate_fn' must be callable, got {}.".format(type(evaluate_fn).__name__))
+    if np.isclose(np.sin(shift), 0.0, atol=1e-12):
+        raise ValueError(
+            "'shift' must not be a multiple of pi (sin(shift) would be 0, making the "
+            "parameter-shift estimator undefined), got {}.".format(shift)
+        )
+    if base_values.size != len(ansatz.params_names):
+        raise ValueError(
+            "'params_values' must have length {} (= number of ansatz parameters), got {}."
+            .format(len(ansatz.params_names), base_values.size)
+        )
+
+
+# ------------------------------------------------------------
+def validate_parameter_shift_expectation(hamiltonian, num_of_iter_measure: int) -> None:
+    if not isinstance(hamiltonian, Hamiltonian):
+        raise TypeError("'hamiltonian' must be a Hamiltonian instance, got {}.".format(type(hamiltonian).__name__))
+    if not isinstance(num_of_iter_measure, int) or isinstance(num_of_iter_measure, bool):
+        raise TypeError("'num_of_iter_measure' must be an int, got {}.".format(type(num_of_iter_measure).__name__))
+    if num_of_iter_measure < 1:
+        raise ValueError("'num_of_iter_measure' must be at least 1, got {}.".format(num_of_iter_measure))
+
 
