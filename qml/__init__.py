@@ -46,4 +46,19 @@ from .gradients import (
     parameter_shift_gradient_expectation,
 )
 
- 
+from .training import (
+    Loss,
+    MSELoss,
+    MAELoss,
+    HingeLoss,
+    BinaryCrossEntropyLoss,
+    CategoricalCrossEntropyLoss,
+
+    mse_loss,
+    mae_loss,
+    hinge_loss,
+    binary_crossentropy_loss,
+    categorical_crossentropy_loss,
+
+    get_loss,
+)
