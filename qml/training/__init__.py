@@ -1,3 +1,4 @@
+
 from .loss import (
     Loss,
     MSELoss,
@@ -13,4 +14,16 @@ from .loss import (
     LOSS_REGISTRY,
     register_loss,
     get_loss,
+)
+
+
+from .optimizer import (
+    Optimizer,
+    GradientDescent,
+    Adagrad,
+    RMSProp,
+    Adam,
+    OPTIMIZER_REGISTRY,
+    register_optimizer,
+    get_optimizer,
 )

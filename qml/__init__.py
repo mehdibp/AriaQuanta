@@ -53,12 +53,17 @@ from .training import (
     HingeLoss,
     BinaryCrossEntropyLoss,
     CategoricalCrossEntropyLoss,
-
     mse_loss,
     mae_loss,
     hinge_loss,
     binary_crossentropy_loss,
     categorical_crossentropy_loss,
-
     get_loss,
+    
+    Optimizer,
+    GradientDescent,
+    Adagrad,
+    RMSProp,
+    Adam,
+    get_optimizer,
 )
