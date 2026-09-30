@@ -15,8 +15,8 @@
 #                          re-uploading -- the latter is a hybrid: data AND weights)
 #     gradients/        <- parameter-shift rule and other gradient estimators   (not yet implemented)
 #     training/         <- hybrid quantum-classical optimization loops          (not yet implemented)
-#     circuits/         <- general PQC infrastructure                           (not yet implemented)
 #     models/           <- ready-made models such as VQC                        (not yet implemented)
+#     circuits/         <- general PQC infrastructure                           (not yet implemented)
 #
 # Each future sub-package gets its own __init__.py exporting its public names, mirroring how
 # AriaQuanta.aqc / AriaQuanta.algorithms / AriaQuanta.backend are already organized.
@@ -66,4 +66,11 @@ from .training import (
     RMSProp,
     Adam,
     get_optimizer,
+)
+
+from .models import (
+    VQC,
+    OutputMap,
+    IdentityOutputMap,
+    ZToProbabilityOutputMap,
 )

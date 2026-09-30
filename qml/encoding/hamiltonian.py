@@ -5,11 +5,11 @@ from scipy.linalg import expm
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit
 from AriaQuanta.aqc.gatelibrary import Custom
-from AriaQuanta.algorithms.eigen_solver import Hamiltonian, _parse_pauli_string
+from AriaQuanta.algorithms.eigen_solver import Hamiltonian, parse_pauli_string
 from AriaQuanta.qml._shared import PAULI_MATRIX
 
 
-# NOTE: `_parse_pauli_string` is reused as-is from AriaQuanta.algorithms.eigen_solver rather
+# NOTE: `parse_pauli_string` is reused as-is from AriaQuanta.algorithms.eigen_solver rather
 # than re-implemented here, so the Pauli-string grammar ('Z0X1', 'I', ...) stays identical
 # across expectation-value estimation (VQE/QAOA) and encoding. It's currently a private
 # helper of eigen_solver; if this cross-module reuse feels wrong, the fix is just to drop
@@ -45,7 +45,7 @@ def hamiltonian_encoding(data, pauli_strings: Sequence[str], t: float=1.0, num_o
     if num_of_qubits is None:
         max_qubit = 0
         for pauli_string in hamiltonian.paulis:
-            parsed = _parse_pauli_string(pauli_string)
+            parsed = parse_pauli_string(pauli_string)
             if parsed:
                 max_qubit = max(max_qubit, max(q for q, _ in parsed))
         num_of_qubits = max_qubit + 1
@@ -75,7 +75,7 @@ def hamiltonian_matrix(pauli_strings: Sequence[str], coefficients: Sequence[floa
 
 # ------------------------------------------------------------
 def _term_matrix(pauli_string: str, num_of_qubits: int) -> np.ndarray:
-    active = dict(_parse_pauli_string(pauli_string, num_of_qubits))   # {qubit: 'X'|'Y'|'Z'}
+    active = dict(parse_pauli_string(pauli_string, num_of_qubits))   # {qubit: 'X'|'Y'|'Z'}
     matrix = np.array([[1.0]], dtype=complex)
     for q in range(num_of_qubits):
         block = PAULI_MATRIX[active[q]] if q in active else np.eye(2, dtype=complex)

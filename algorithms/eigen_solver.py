@@ -1,5 +1,5 @@
 import re
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit
@@ -39,7 +39,7 @@ class Hamiltonian:
             if not (isinstance(term, (list, tuple)) and len(term) == 2):
                 raise ValueError("terms[{}] must be a (pauli_string, coefficient) pair, got {!r}.".format(i, term))
             pauli_string, coef = term
-            _parse_pauli_string(pauli_string)     # validates format; raises ValueError if malformed
+            parse_pauli_string(pauli_string)     # validates format; raises ValueError if malformed
             if not isinstance(coef, (int, float, np.floating, np.integer)) or isinstance(coef, bool):
                 raise TypeError( "Coefficient for '{}' must be a real number, got {}.".format(pauli_string, type(coef).__name__) )
             if pauli_string in seen_paulis:
@@ -48,7 +48,7 @@ class Hamiltonian:
 
 
 # -------------------------------------------------------------------------------------------
-def _parse_pauli_string(pauli_string: str, num_of_qubits: Optional[int] = None) -> List[Tuple[int, str]]:
+def parse_pauli_string(pauli_string: str, num_of_qubits: Optional[int] = None) -> List[Tuple[int, str]]:
     """
     Parse a Pauli string such as 'X0Z2' into its non-identity (qubit, pauli_char) pairs.
     Identity factors ('I<n>' or the bare global identity string 'I') are dropped, since
@@ -112,7 +112,7 @@ def pauli_transform_circuit(circuit: Circuit, pauli_string: str) -> Circuit:
     :return: A new Circuit with the basis-change gates appended.
     """
     circuit_copy = circuit.copy()
-    active_qubits = _parse_pauli_string(pauli_string, circuit.num_of_qubits)
+    active_qubits = parse_pauli_string(pauli_string, circuit.num_of_qubits)
 
     for qubit, pauli_char in active_qubits:
         if pauli_char == 'X':
@@ -157,7 +157,7 @@ def find_expectation_value(circuit: Circuit, hamiltonian: Hamiltonian, num_of_it
     total_energy = 0.0
 
     for pauli_string, coef in zip(paulis, coefs):
-        active_qubits = _parse_pauli_string(pauli_string, num_of_qubits)   # [(qubit, 'X'|'Y'|'Z'), ...]
+        active_qubits = parse_pauli_string(pauli_string, num_of_qubits)   # [(qubit, 'X'|'Y'|'Z'), ...]
 
         if not active_qubits:
             # Every factor is identity -> expectation is trivially 1
