@@ -219,9 +219,11 @@ class VQC:
 
         Cost note: each gradient step re-evaluates the circuit O(batch_size * n_params)
         times (2 shifted evaluations per parameter per sample, via parameter-shift), each
-        costing num_of_iter_measure shots -- keep the dataset/ansatz size modest, or use
-        an SPSA-style gradient estimator (see qml.training.optimizer's "candidates for
-        later") once that becomes the bottleneck.
+        costing num_of_iter_measure shots -- keep the dataset/ansatz size modest, or swap
+        in AriaQuanta.qml.gradients.spsa_gradient (2 evaluations total, regardless of
+        n_params) paired with AriaQuanta.qml.training.optimizer.SPSA once that becomes the
+        bottleneck (see this file's own "candidates for later" for how that swap would
+        change _gradient_for_sample).
 
         :param X: (n_samples, n_features) array-like.
         :param y: (n_samples,) array-like of targets.
@@ -328,10 +330,15 @@ class VQC:
 #     prediction per class) plus a softmax-style OutputMap, extending the gradient
 #     computation to a per-observable Jacobian (call parameter_shift_gradient once per
 #     observable) -- CategoricalCrossEntropyLoss already supports the resulting shape.
-#   - SPSA-based fit(): swap parameter_shift_gradient for an SPSA gradient estimator (see
-#     qml.training.optimizer's own "candidates for later") once shot budget matters more
-#     than gradient exactness -- would replace _gradient_for_sample's inner call, nothing
-#     else in fit()'s loop needs to change.
+#   - SPSA-based fit(): AriaQuanta.qml.gradients.spsa_gradient and
+#     AriaQuanta.qml.training.optimizer.SPSA now both exist. Wiring them in means
+#     _gradient_for_sample would call spsa_gradient directly on a full loss(prediction)
+#     closure instead of parameter_shift_gradient on the raw prediction -- since
+#     spsa_gradient doesn't need the chain-rule composition (it has no sinusoidal-structure
+#     requirement, see its docstring), this actually *removes* the output_map.derivative()/
+#     loss.gradient() steps for that path rather than just swapping one call. Likely shape:
+#     a `gradient_method='parameter_shift'|'spsa'` constructor flag selecting which
+#     _gradient_for_sample body runs; not added yet since fit() only has the one path today.
 #   - partial_fit(): fit() already supports calling it more than once on the same VQC
 #     instance (ansatz params and optimizer state both persist between calls, a warm
 #     start) -- a partial_fit() alias is only a naming/ergonomics addition.

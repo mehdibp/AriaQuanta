@@ -13,9 +13,9 @@
 #                          structure and their usual purpose (quantum kernels)
 #     ansatz/           <- trainable/variational circuits (hardware-efficient, data
 #                          re-uploading -- the latter is a hybrid: data AND weights)
-#     gradients/        <- parameter-shift rule and other gradient estimators   (not yet implemented)
-#     training/         <- hybrid quantum-classical optimization loops          (not yet implemented)
-#     models/           <- ready-made models such as VQC                        (not yet implemented)
+#     gradients/        <- parameter-shift rule and other gradient estimators
+#     training/         <- hybrid quantum-classical optimization loops
+#     models/           <- ready-made models such as VQC
 #     circuits/         <- general PQC infrastructure                           (not yet implemented)
 #
 # Each future sub-package gets its own __init__.py exporting its public names, mirroring how
@@ -44,6 +44,8 @@ from .ansatz import (
 from .gradients import (
     parameter_shift_gradient,
     parameter_shift_gradient_expectation,
+    spsa_gradient,
+    spsa_perturbation_schedule,
 )
 
 from .training import (
@@ -65,6 +67,7 @@ from .training import (
     Adagrad,
     RMSProp,
     Adam,
+    SPSA,
     get_optimizer,
 )
 

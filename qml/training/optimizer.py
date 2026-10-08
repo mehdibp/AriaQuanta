@@ -27,9 +27,14 @@ from AriaQuanta._utils import np
 # shape-mismatch guard come for free), decorate with @register_optimizer('name') to make it
 # reachable via get_optimizer('name', **kwargs) and the OPTIMIZER_REGISTRY dict -- the same
 # lookup pattern already used by AriaQuanta.qml.training.loss's LOSS_REGISTRY. See the bottom
-# of this file for candidates worth adding later (Nesterov momentum, AdamW, SPSA, quantum
-# natural gradient) -- none of them are needed by anything shipped yet, so they're
-# deliberately not stubbed out here.
+# of this file for candidates worth adding later (Nesterov momentum, AdamW, quantum natural
+# gradient) -- none of them are needed by anything shipped yet, so they're deliberately not
+# stubbed out here. SPSA (below) is implemented as a plain Optimizer -- it fits the
+# step(params, gradient) contract just fine, since applying a decaying step size to a
+# gradient doesn't care where that gradient came from. What genuinely doesn't fit here is
+# *estimating* the SPSA-style gradient itself (that needs to call evaluate_fn), which is why
+# it lives as its own function, AriaQuanta.qml.gradients.spsa_gradient, alongside
+# parameter_shift_gradient -- not in this file.
 # -------------------------------------------------------------------------------------------
 
 
@@ -231,6 +236,47 @@ class Adam(Optimizer):
         v_hat = v / (1.0 - self.beta2 ** self._t)
         return params - self.learning_rate * m_hat / (np.sqrt(v_hat) + self.epsilon)
 
+# -------------------------------------------------------------------------------------------
+@register_optimizer('spsa')
+class SPSA(Optimizer):
+    """
+    Decaying-step-size gradient descent, using Spall's classic SPSA gain-sequence schedule:
+        a_k     <- a / (t + A) ** alpha            (t = 1, 2, 3, ... -- this instance's own step count)
+        params  <- params - a_k * gradient
+
+    This is a plain Optimizer -- same step(params, gradient) contract as every other class
+    here, so it accepts a gradient from *any* source. It's specifically designed to be
+    paired with AriaQuanta.qml.gradients.spsa_gradient's noisy, 2-evaluation-per-call
+    gradient estimate: Spall's theory (the decaying a_k specifically) is what makes
+    convergence provable despite that noise. Using spsa_gradient's estimate with a
+    fixed-learning-rate optimizer (GradientDescent, Adam, ...) instead still runs, just
+    without that guarantee; conversely, pairing SPSA (this class) with an exact gradient
+    (e.g. from parameter_shift_gradient) is also valid -- it's just an unusually
+    conservative, monotonically-shrinking learning rate schedule in that case.
+
+    :param a: Numerator of the step-size gain sequence (plays the role of a learning rate).
+    :param A: Stability constant damping the first few steps. Spall recommends ~10% of the
+                    expected total iteration count, if known; 0 (the default) is the common
+                    practical choice otherwise.
+    :param alpha: Step-size decay exponent. 0.602 is Spall's standard recommendation.
+    """
+
+    def __init__(self, a: float = 0.1, A: float = 0.0, alpha: float = 0.602) -> None:
+        if A < 0:
+            raise ValueError("'A' must be non-negative, got {}.".format(A))
+        if alpha <= 0:
+            raise ValueError("'alpha' must be positive, got {}.".format(alpha))
+        self.A = A
+        self.alpha = alpha
+        super().__init__(learning_rate=a)   # base class validates a > 0, and gives every Optimizer a .learning_rate attribute
+
+    def step(self, params: np.ndarray, gradient: np.ndarray) -> np.ndarray:
+        params, gradient = self._validate_step_inputs(params, gradient)
+        self._t += 1
+
+        a_k = self.learning_rate / (self._t + self.A) ** self.alpha
+        return params - a_k * gradient
+
 
 # -------------------------------------------------------------------------------------------
 # Candidates for later (none needed by anything shipped yet -- add when something actually
@@ -243,16 +289,6 @@ class Adam(Optimizer):
 #                          applied separately from the Adam update, not folded into the
 #                          gradient like classic L2) -- relevant once a models/vqc.py wants
 #                          regularization.
-#   - SPSA                : Simultaneous Perturbation Stochastic Approximation -- estimates a
-#                          gradient from just 2 circuit evaluations total per step (one
-#                          random simultaneous perturbation of *every* parameter), regardless
-#                          of parameter count, versus parameter-shift's 2*n_params. The
-#                          standard choice for training on noisy/real hardware where circuit
-#                          evaluations dominate cost; worth adding once a training loop's
-#                          shot budget actually matters. Doesn't fit this file's Optimizer
-#                          signature as-is, since it needs to evaluate the cost function
-#                          itself (not just consume a precomputed gradient) -- closer to a
-#                          fused gradient-estimator-plus-optimizer than a plain step() rule.
 #   - Quantum natural gradient : preconditions the gradient by the inverse Fubini-Study
 #                          metric tensor of the ansatz before applying it (i.e. gradient
 #                          descent in the circuit's own state-space geometry rather than raw

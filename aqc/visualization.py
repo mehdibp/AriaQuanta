@@ -23,7 +23,7 @@ DEFAULT_STYLE: Dict[str, Any] = {
     'color_control':    '#407a28',      # CX/CZ/CP/CS/CSX/CRX/CRY/CRZ/CNX/CNY/CNZ/CNP
     'color_cu':         '#ffa621',      # CU / CNU
     'color_custom':     '#ebe2c7',      # Custom gate box
-    'color_measure':    '#ededed',      # Measure box background
+    'color_measure':    '#cfcfcf',      # Measure box background
     'color_barrier':    '#8c8c8c',      # Barrier separator line
     'color_wire':       'k',            # quantum wire
     'color_clbit_wire': 'gray',         # classical (double-line) wire
@@ -32,7 +32,7 @@ DEFAULT_STYLE: Dict[str, Any] = {
     'fontsize':         12,
     'small_fontsize':   10,
     'figsize_scale_x':  1.4,
-    'figsize_scale_y':  0.75,
+    'figsize_scale_y':  1,
     # -- column auto-width (see CircuitVisualizer._layout_columns) -------------------------
     'auto_column_width':   True,  # widen a column when one of its gates would otherwise overlap its neighbours
     'column_width_margin': 1.15,  # extra breathing room applied on top of a gate's measured width
@@ -720,18 +720,19 @@ def plot_measure(ax: Axes, i: float, gate_i: Measure, style: Dict[str, Any]) -> 
     t = np.linspace(0, 2 * np.pi, 100)
     for q in gate_i.qubits:
         # draw back-to-front: background box, then the meter needle, then the arrow glyph on top
-        height = width = 0.8
-        rect = Rectangle((i - 0.4, q - 0.4), width, height, facecolor=style['color_measure'], zorder=1, edgecolor='k')
+        width  = 0.6
+        height = 0.8
+        rect = Rectangle((i-0.3, q-0.4), width, height, facecolor=style['color_measure'], zorder=2, edgecolor='k')
         ax.add_patch(rect)
 
-        u, v = i, q + 0.25    # center of the little dial arc
-        a, b = 0.32, 0.22     # x/y radii
+        u, v = i, q + 0.25      # center of the little dial arc
+        a, b = 0.2, 0.35        # x/y radii
         xx = u + a * np.cos(t)
         yy = v + b * np.sin(t)
         idx = yy < v
-        ax.plot(xx[idx], yy[idx], color='black', zorder=2)
+        ax.plot(xx[idx], yy[idx], color='black', zorder=3)
 
-        ax.text(i, q, u"\u2197", fontsize=27, ha='center', va='center', zorder=3)
+        ax.text(i+0.08, q-0.02, u"\u2197", fontsize=27, ha='center', va='center', zorder=4)
 
 
 # Barrier -----------------------------------------------------------------------------------

@@ -1,4 +1,3 @@
-
 from .loss import (
     Loss,
     MSELoss,
@@ -23,6 +22,7 @@ from .optimizer import (
     Adagrad,
     RMSProp,
     Adam,
+    SPSA,
     OPTIMIZER_REGISTRY,
     register_optimizer,
     get_optimizer,
