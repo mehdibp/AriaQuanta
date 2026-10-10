@@ -32,7 +32,7 @@ DEFAULT_STYLE: Dict[str, Any] = {
     'fontsize':         12,
     'small_fontsize':   10,
     'figsize_scale_x':  1.4,
-    'figsize_scale_y':  1,
+    'figsize_scale_y':  0.9,
     # -- column auto-width (see CircuitVisualizer._layout_columns) -------------------------
     'auto_column_width':   True,  # widen a column when one of its gates would otherwise overlap its neighbours
     'column_width_margin': 1.15,  # extra breathing room applied on top of a gate's measured width
@@ -726,7 +726,7 @@ def plot_measure(ax: Axes, i: float, gate_i: Measure, style: Dict[str, Any]) -> 
         ax.add_patch(rect)
 
         u, v = i, q + 0.25      # center of the little dial arc
-        a, b = 0.2, 0.35        # x/y radii
+        a, b = 0.25, 0.35       # x/y radii
         xx = u + a * np.cos(t)
         yy = v + b * np.sin(t)
         idx = yy < v

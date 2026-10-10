@@ -47,8 +47,6 @@ def validate_binary_data(data) -> List[int]:
         bits.append(rounded)
     return bits
 
-
-
 # ------------------------------------------------------------
 def validate_pauli_blocks(paulis: Union[str, Sequence[str]]) -> List[str]:
     blocks = [paulis] if isinstance(paulis, str) else list(paulis)
@@ -77,7 +75,6 @@ def validate_parameter_shift(ansatz: Ansatz, evaluate_fn: Callable[[Ansatz], flo
             .format(len(ansatz.params_names), base_values.size)
         )
 
-
 # ------------------------------------------------------------
 def validate_parameter_shift_expectation(hamiltonian, num_of_iter_measure: int) -> None:
     if not isinstance(hamiltonian, Hamiltonian):
@@ -88,3 +85,20 @@ def validate_parameter_shift_expectation(hamiltonian, num_of_iter_measure: int) 
         raise ValueError("'num_of_iter_measure' must be at least 1, got {}.".format(num_of_iter_measure))
 
 
+# -------------------------------------------------------------------------------------------
+def validate_words(data) -> np.ndarray:
+    arr = np.asarray(data, dtype=float).flatten()
+    if arr.size == 0:
+        raise ValueError("'data' must contain at least one value.")
+    if not np.all(np.isfinite(arr)):
+        raise ValueError("'data' contains NaN or Inf values.")
+
+    words = np.rint(arr).astype(np.int64)
+    if np.any(np.abs(arr - words) > 1e-9):
+        raise ValueError(
+            "qram_encoding stores non-negative *integers* (bit strings); got non-integer values. "
+            "Quantize real-valued features to integers first, e.g. np.round(x * (2**bits - 1))."
+        )
+    if np.any(words < 0):
+        raise ValueError("qram_encoding stores non-negative integers, got a negative value.")
+    return words

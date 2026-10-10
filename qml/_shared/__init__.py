@@ -10,6 +10,7 @@ from .validation import (
     validate_pauli_blocks,
     validate_parameter_shift,
     validate_parameter_shift_expectation,
+    validate_words,
 )
 
 from .pauli import PAULI_MATRIX, pauli_tensor_matrix, pauli_evolution_matrix

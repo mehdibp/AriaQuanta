@@ -27,6 +27,8 @@ from .encoding import (
     angle_encoding,
     hamiltonian_encoding,
     hamiltonian_matrix,
+    uniform_superposition,
+    qram_encoding,
 )
 
 from .feature_map import (
