@@ -10,19 +10,32 @@ from AriaQuanta.aqc.gatelibrary import GateBase, GateSingleQubit, RY, RZ, CX, CR
 
 # parametrized circuit ----------------------------------------------------------------------
 class Ansatz(Circuit):
-    def __init__(self, num_of_qubits: int, params_names: List[str], num_of_clbits: int=0,
-                 num_of_ancilla: int=0, list_of_qubits: Optional[List[Qubit]]=None) -> None:
+    """
+    Parametrized circuit with two kinds of symbolic parameters (same split as Qiskit's
+    QNN `weight_params` / `input_params`):
 
-        if len(params_names) == 0:
-            raise ValueError("'params_names' must contain at least one parameter name.")
-        if len(set(params_names)) != len(params_names):
-            raise ValueError("'params_names' must not contain duplicate names, got {}.".format(params_names))
+      - params_names : trainable weights. This is what optimizers and gradients (parameter-shift, SPSA) see.
+      - input_names  : data inputs (optional). Bound per sample with set_input_values(); they are
+                       never part of params_names, so no gradient is ever taken w.r.t. them.
+
+    The circuit is built once; weights/inputs are just (re)bound before every evaluation.
+    """
+    def __init__(self, num_of_qubits: int, params_names: List[str], num_of_clbits: int=0,
+                 num_of_ancilla: int=0, list_of_qubits: Optional[List[Qubit]]=None,
+                 input_names: Optional[List[str]]=None) -> None:
+
+        input_names = [] if input_names is None else list(input_names)
+        self.check_validation(params_names, input_names)
 
         #  ansatz = Ansatz(2, ['theta1'])
         #  ansatz | H(1) | RX('theta1',0) | H(0) | CX(0,1)
         self.params_names: List[str] = list(params_names)                   # ['theta1']
         self.params_values: np.ndarray = np.zeros(len(self.params_names))   # bound numeric values (0.0 until set)
         self.params_gates: List[Tuple[GateBase, str, int]] = []             # [(gate, attribute_name, params_names index), ...]
+
+        self.input_names: List[str] = input_names                           # ['x0', 'x1']  (data, not trained)
+        self.input_values: np.ndarray = np.zeros(len(self.input_names))
+        self.input_gates: List[Tuple[GateBase, str, int]] = []              # same layout as params_gates, for input_names
 
         super().__init__(num_of_qubits, num_of_clbits, num_of_ancilla, list_of_qubits)
 
@@ -40,6 +53,24 @@ class Ansatz(Circuit):
         for gate_i, key_i, index_i in self.params_gates:
             value_i = params_values[index_i]
             setattr(gate_i, key_i, value_i)
+            gate_i.update_matrix()
+
+    # ------------------------------------------------------------
+    def set_input_values(self, input_values: Union[List[float], np.ndarray]) -> None:
+        """Bind the data inputs (one value per entry of self.input_names, in that order)."""
+        if not self.input_names:
+            raise ValueError("This Ansatz has no input parameters (input_names is empty).")
+
+        input_values = np.asarray(input_values, dtype=float).flatten()
+        if input_values.size != len(self.input_names):
+            raise ValueError(
+                "Expected {} input value(s) for {}, got {}."
+                .format(len(self.input_names), self.input_names, input_values.size)
+            )
+
+        self.input_values = input_values
+        for gate_i, key_i, index_i in self.input_gates:
+            setattr(gate_i, key_i, input_values[index_i])
             gate_i.update_matrix()
 
     # ------------------------------------------------------------
@@ -71,13 +102,13 @@ class Ansatz(Circuit):
 
     # ------------------------------------------------------------
     def _register_params(self, gate: GateBase) -> None:
-        gate_dict = gate.__dict__
-        params_names = self.params_names
-
-        for this_key, this_value in gate_dict.items():
-            if isinstance(this_value, str) and this_value in params_names:
-                index = params_names.index(this_value)
-                self.params_gates.append((gate, this_key, index))
+        for this_key, this_value in gate.__dict__.items():
+            if not isinstance(this_value, str):
+                continue
+            if this_value in self.params_names:
+                self.params_gates.append((gate, this_key, self.params_names.index(this_value)))
+            elif this_value in self.input_names:
+                self.input_gates.append((gate, this_key, self.input_names.index(this_value)))
 
     # ------------------------------------------------------------
     def add_gate(self, gate: GateBase) -> None:
@@ -109,6 +140,20 @@ class Ansatz(Circuit):
     def run(self) -> np.ndarray:
         self.statevector = self.initial_state
         return super().run()
+
+
+    # ------------------------------------------------------------
+    @staticmethod
+    def check_validation(params_names: List[str], input_names: Optional[List[str]]):
+        overlap = set(input_names) & set(params_names)
+        if len(params_names) == 0:
+            raise ValueError("'params_names' must contain at least one parameter name.")
+        if len(set(params_names)) != len(params_names):
+            raise ValueError("'params_names' must not contain duplicate names, got {}.".format(params_names))
+        if len(set(input_names)) != len(input_names):
+            raise ValueError("'input_names' must not contain duplicate names, got {}.".format(input_names))
+        if overlap:
+            raise ValueError("'input_names' and 'params_names' must be disjoint, both contain {}.".format(sorted(overlap)))
 
 
 # -------------------------------------------------------------------------------------------

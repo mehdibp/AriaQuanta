@@ -6,6 +6,7 @@ from AriaQuanta.aqc.circuit import Circuit
 from AriaQuanta.aqc.ansatz import Ansatz
 from AriaQuanta.algorithms.eigen_solver import Hamiltonian, find_expectation_value
 from AriaQuanta.qml.gradients.parameter_shift import parameter_shift_gradient
+from AriaQuanta.qml.gradients.spsa import spsa_gradient, spsa_perturbation_schedule
 from AriaQuanta.qml.training.loss import Loss
 from AriaQuanta.qml.training.optimizer import Optimizer
 
@@ -41,6 +42,14 @@ from AriaQuanta.qml.training.optimizer import Optimizer
 # for the analytic proof). This is exactly why every Loss exposes gradient() as a
 # first-class method, and why this file -- not qml.gradients or qml.training -- is where
 # that composition is allowed to happen.
+#
+# gradient_method='spsa' selects a second, structurally different path: spsa_gradient perturbs
+# every parameter simultaneously and evaluates the *full* loss at theta +/- c_k*delta -- 2
+# evaluations per sample regardless of parameter count (plus one more to report the loss).
+# It does not rely on the sinusoidal structure of a raw expectation value, so there is no
+# chain rule here: [2] and [3] above are not used at all, and a Loss without gradient() trains
+# fine. The price is a noisy gradient estimate, which is why it is meant to be paired with the
+# decaying-step-size AriaQuanta.qml.training.optimizer.SPSA.
 # -------------------------------------------------------------------------------------------
 
 
@@ -61,7 +70,6 @@ class OutputMap(ABC):
     def derivative(self, raw: np.ndarray) -> np.ndarray:
         raise NotImplementedError
 
-
 class IdentityOutputMap(OutputMap):
     """Passes the raw expectation value through unchanged -- the right choice for MSE/MAE/
     Hinge, which all operate directly on a raw <Z>-style (or any Hamiltonian) expectation."""
@@ -72,7 +80,6 @@ class IdentityOutputMap(OutputMap):
 
     def derivative(self, raw: np.ndarray) -> np.ndarray:
         return np.ones_like(np.asarray(raw, dtype=float))
-
 
 class ZToProbabilityOutputMap(OutputMap):
     """
@@ -118,15 +125,28 @@ class VQC:
                     called at least once, so VQC always binds something at construction.
     :param random_state: Seeds the default random initial_params draw. Ignored if
                     initial_params is given explicitly.
+    :param gradient_method: How fit() obtains d(loss)/d(theta):
+                    'parameter_shift' (default) -- exact chain rule: parameter-shift on the raw
+                        expectation x output_map.derivative() x loss.gradient(). 2*n_params + 1
+                        circuit evaluations per sample; the loss must implement gradient().
+                    'spsa' -- SPSA estimate of the full loss's gradient. 3 evaluations per
+                        sample regardless of n_params; works with any Loss (gradient() not
+                        needed). Noisy by design: pair it with qml.training.SPSA (decaying
+                        step size) and use batch_size > 1 so the batch average smooths it.
+    :param spsa_c: Starting perturbation magnitude for gradient_method='spsa' (decays across
+                    optimizer steps as spsa_c / (k + 1) ** spsa_gamma -- Spall's schedule, see
+                    qml.gradients.spsa_perturbation_schedule). Ignored otherwise.
+    :param spsa_gamma: Decay exponent of that schedule (Spall's recommendation: 0.101).
     """
-
     def __init__(self, feature_map: Callable[[np.ndarray], Circuit], ansatz: Ansatz,
                  observable: Hamiltonian, loss: Loss, optimizer: Optimizer,
                  num_of_iter_measure: int = 200, output_map: Optional[OutputMap] = None,
                  initial_params: Optional[Union[List[float], np.ndarray]] = None,
-                 random_state: Optional[int] = None) -> None:
+                 random_state: Optional[int] = None, gradient_method: str = 'parameter_shift',
+                 spsa_c: float = 0.2, spsa_gamma: float = 0.101) -> None:
 
         self._check_init(feature_map, ansatz, observable, loss, optimizer, num_of_iter_measure, output_map)
+        self._check_gradient_options(gradient_method, spsa_c, spsa_gamma)
 
         self.feature_map = feature_map
         self.ansatz = ansatz
@@ -135,6 +155,10 @@ class VQC:
         self.optimizer = optimizer
         self.num_of_iter_measure = num_of_iter_measure
         self.output_map = output_map if output_map is not None else IdentityOutputMap()
+        self.gradient_method = gradient_method
+        self.spsa_c = spsa_c
+        self.spsa_gamma = spsa_gamma
+        self._optimizer_steps = 0      # optimizer updates taken so far (all fit() calls) -- indexes the SPSA c_k schedule
 
         if initial_params is None:
             rng = np.random.default_rng(random_state)
@@ -143,8 +167,14 @@ class VQC:
 
         self.history: Dict[str, List[float]] = {'loss': []}
 
+
     # ------------------------------------------------------------
     def _build_circuit_for(self, x: np.ndarray, ansatz: Ansatz) -> Circuit:
+        if self.feature_map is None:
+            # data lives inside the ansatz as symbolic inputs: bind this sample and run the ansatz as is
+            ansatz.set_input_values(x)
+            return ansatz
+        
         encoding_circuit = self.feature_map(x)
         if not isinstance(encoding_circuit, Circuit):
             raise TypeError("'feature_map' must return a Circuit, got {}.".format(type(encoding_circuit).__name__))
@@ -155,6 +185,11 @@ class VQC:
             )
         circuit = Circuit(ansatz.num_of_qubits)
         circuit.gates = list(encoding_circuit.gates) + list(ansatz.gates)
+        # amplitude_encoding sets initial_state instead of adding gates -- without this the
+        # model would silently see |0...0> instead of the data
+        circuit.initial_state = encoding_circuit.initial_state
+        circuit.statevector = encoding_circuit.initial_state
+
         return circuit
 
     def _raw_expectation(self, x: np.ndarray, ansatz: Optional[Ansatz] = None) -> float:
@@ -182,8 +217,25 @@ class VQC:
         return self.loss(y_pred, y_true)
 
     # ------------------------------------------------------------
-    def _gradient_for_sample(self, x: np.ndarray, y_true: float) -> Tuple[np.ndarray, float]:
-        """The chain-rule gradient of self.loss for one sample (see the module docstring). Returns (gradient, loss_value)."""
+    def _gradient_for_sample(self, x: np.ndarray, y_true: float, spsa_c: Optional[float] = None,
+                              spsa_seed: Optional[int] = None) -> Tuple[np.ndarray, float]:
+        """d(loss)/d(theta) for one sample, via self.gradient_method (see module docstring). Returns (gradient, loss_value)"""
+        if self.gradient_method == 'spsa':
+            return self._gradient_spsa(x, y_true, spsa_c if spsa_c is not None else self.spsa_c, spsa_seed)
+        return self._gradient_parameter_shift(x, y_true)
+
+    def _gradient_spsa(self, x: np.ndarray, y_true: float, c: float, seed: Optional[int]) -> Tuple[np.ndarray, float]:
+        """SPSA estimate of the full loss's gradient: no chain rule, so no loss.gradient()/output_map.derivative()."""
+
+        def loss_fn(a: Ansatz) -> float:
+            output = self.output_map.forward(np.array([self._raw_expectation(x, ansatz=a)]))
+            return float(self.loss(output, np.array([y_true])))
+
+        gradient = spsa_gradient(self.ansatz, loss_fn, c=c, seed=seed)
+        return gradient, loss_fn(self.ansatz)     # one extra evaluation, at the unperturbed point, for the reported loss
+
+    def _gradient_parameter_shift(self, x: np.ndarray, y_true: float) -> Tuple[np.ndarray, float]:
+        """The exact chain-rule gradient of self.loss for one sample (see the module docstring)."""
 
         def raw_prediction_fn(a: Ansatz) -> float:
             return self._raw_expectation(x, ansatz=a)
@@ -217,13 +269,11 @@ class VQC:
         """
         Trains the ansatz's parameters against (X, y) using self.loss/self.optimizer.
 
-        Cost note: each gradient step re-evaluates the circuit O(batch_size * n_params)
-        times (2 shifted evaluations per parameter per sample, via parameter-shift), each
-        costing num_of_iter_measure shots -- keep the dataset/ansatz size modest, or swap
-        in AriaQuanta.qml.gradients.spsa_gradient (2 evaluations total, regardless of
-        n_params) paired with AriaQuanta.qml.training.optimizer.SPSA once that becomes the
-        bottleneck (see this file's own "candidates for later" for how that swap would
-        change _gradient_for_sample).
+        Cost note: with gradient_method='parameter_shift' each gradient step re-evaluates the
+        circuit O(batch_size * n_params) times (2 shifted evaluations per parameter per
+        sample), each costing num_of_iter_measure shots. With gradient_method='spsa' that
+        drops to 3 evaluations per sample regardless of n_params -- the usual choice once the
+        ansatz or dataset grows (pair it with qml.training.SPSA and batch_size > 1).
 
         :param X: (n_samples, n_features) array-like.
         :param y: (n_samples,) array-like of targets.
@@ -238,7 +288,8 @@ class VQC:
         :return: History dict: {'loss': [...]} (plus 'val_loss' if validation_data given).
                     Also stored on self.history. Calling fit() again continues training
                     from the current ansatz parameters and optimizer state (a warm start),
-                    it does not reset either.
+                    it does not reset either -- and, for gradient_method='spsa', the c_k
+                    perturbation schedule keeps counting from where it left off too.
         """
         X = self._validate_X(X)
         y = np.asarray(y, dtype=float).flatten()
@@ -266,15 +317,23 @@ class VQC:
             epoch_losses: List[float] = []
             for start in range(0, n_samples, bs):
                 batch_idx = indices[start:start + bs]
+                if self.gradient_method == 'spsa':
+                    c_k = spsa_perturbation_schedule(self._optimizer_steps, c=self.spsa_c, gamma=self.spsa_gamma)
+                else:
+                    c_k = None
+
                 grads, losses = [], []
                 for i in batch_idx:
-                    g, l = self._gradient_for_sample(X[i], y[i])
+                    # a reproducible perturbation direction per sample when random_state was given
+                    seed = int(rng.integers(0, 2**31 - 1)) if self.gradient_method == 'spsa' else None
+                    g, l = self._gradient_for_sample(X[i], y[i], spsa_c=c_k, spsa_seed=seed)
                     grads.append(g)
                     losses.append(l)
 
                 batch_grad = np.mean(grads, axis=0)
                 new_params = self.optimizer.step(self.ansatz.params_values, batch_grad)
                 self.ansatz.set_params_values(new_params)
+                self._optimizer_steps += 1
                 epoch_losses.extend(losses)
 
             epoch_loss = float(np.mean(epoch_losses))
@@ -304,9 +363,30 @@ class VQC:
         return X
 
     @staticmethod
+    def _check_gradient_options(gradient_method, spsa_c, spsa_gamma) -> None:
+        if gradient_method not in ('parameter_shift', 'spsa'):
+            raise ValueError("'gradient_method' must be 'parameter_shift' or 'spsa', got {!r}.".format(gradient_method))
+        if spsa_c <= 0:
+            raise ValueError("'spsa_c' must be positive, got {}.".format(spsa_c))
+        if spsa_gamma <= 0:
+            raise ValueError("'spsa_gamma' must be positive, got {}.".format(spsa_gamma))
+
+    @staticmethod
     def _check_init(feature_map, ansatz, observable, loss, optimizer, num_of_iter_measure, output_map) -> None:
-        if not callable(feature_map):
-            raise TypeError("'feature_map' must be callable, got {}.".format(type(feature_map).__name__))
+        if feature_map is None:
+            if not ansatz.input_names:
+                raise ValueError(
+                    "feature_map=None requires an ansatz with symbolic input parameters "
+                    "(ansatz.input_names, e.g. DataReUploadingAnsatz); this ansatz has none, so the data would never enter the circuit."
+                )
+        else:
+            if not callable(feature_map):
+                raise TypeError("'feature_map' must be callable or None, got {}.".format(type(feature_map).__name__))
+            if ansatz.input_names:
+                raise ValueError(
+                    "This ansatz already carries the data through input parameters {} -- pass feature_map=None "
+                    "(using both would encode the sample twice).".format(ansatz.input_names)
+                )
         if not isinstance(ansatz, Ansatz):
             raise TypeError("'ansatz' must be an Ansatz instance, got {}.".format(type(ansatz).__name__))
         if not isinstance(observable, Hamiltonian):
@@ -323,6 +403,7 @@ class VQC:
             raise TypeError("'output_map' must be an OutputMap instance (or None), got {}.".format(type(output_map).__name__))
 
 
+
 # -------------------------------------------------------------------------------------------
 # Candidates for later (none needed by anything shipped yet -- add when something actually
 # needs them):
@@ -330,15 +411,6 @@ class VQC:
 #     prediction per class) plus a softmax-style OutputMap, extending the gradient
 #     computation to a per-observable Jacobian (call parameter_shift_gradient once per
 #     observable) -- CategoricalCrossEntropyLoss already supports the resulting shape.
-#   - SPSA-based fit(): AriaQuanta.qml.gradients.spsa_gradient and
-#     AriaQuanta.qml.training.optimizer.SPSA now both exist. Wiring them in means
-#     _gradient_for_sample would call spsa_gradient directly on a full loss(prediction)
-#     closure instead of parameter_shift_gradient on the raw prediction -- since
-#     spsa_gradient doesn't need the chain-rule composition (it has no sinusoidal-structure
-#     requirement, see its docstring), this actually *removes* the output_map.derivative()/
-#     loss.gradient() steps for that path rather than just swapping one call. Likely shape:
-#     a `gradient_method='parameter_shift'|'spsa'` constructor flag selecting which
-#     _gradient_for_sample body runs; not added yet since fit() only has the one path today.
 #   - partial_fit(): fit() already supports calling it more than once on the same VQC
 #     instance (ansatz params and optimizer state both persist between calls, a warm
 #     start) -- a partial_fit() alias is only a naming/ergonomics addition.

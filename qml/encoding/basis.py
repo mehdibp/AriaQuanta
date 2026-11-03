@@ -7,7 +7,7 @@ from AriaQuanta.qml._shared import validate_binary_data
 
 
 # -------------------------------------------------------------------------------------------
-def basis_encoding(data: Union[List[int], np.ndarray], num_qubits: Optional[int]=None) -> Circuit:
+def basis_encoding(data: Union[List[int], np.ndarray], num_of_qubits: Optional[int]=None) -> Circuit:
     """
     Basis encoding: maps a classical bit string b = (b_0, ..., b_{n-1}) directly onto the
     computational basis state |b_0 b_1 ... b_{n-1}>, by applying an X gate on every qubit
@@ -17,14 +17,13 @@ def basis_encoding(data: Union[List[int], np.ndarray], num_qubits: Optional[int]
     only ever prepares a single basis state, never a superposition.
 
     :param data: A sequence of 0/1 values, one per qubit to encode.
-    :param num_of_qubits: Number of qubits. Defaults to len(data); if larger, the extra
-                           (trailing) qubits are left in |0>.
+    :param num_of_qubits: Number of qubits. Defaults to len(data); if larger, the extra (trailing) qubits are left in |0>.
     :return: A new Circuit with the basis-encoding X gates applied (not yet run).
     """
     bits = validate_binary_data(data)
-    n = num_qubits if num_qubits is not None else len(bits)
+    n = num_of_qubits if num_of_qubits is not None else len(bits)
     if n < len(bits):
-        raise ValueError("num_qubits ({}) must be at least len(data) ({}).".format(n, len(bits)))
+        raise ValueError("num_of_qubits ({}) must be at least len(data) ({}).".format(n, len(bits)))
 
     qc = Circuit(n)
     for i, bit in enumerate(bits):

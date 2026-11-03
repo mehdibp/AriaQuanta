@@ -46,8 +46,6 @@ def amplitude_encoding(data, num_of_qubits: Optional[int] = None) -> Circuit:
     :param data: Sequence of amplitudes (real or complex), length <= 2**num_of_qubits.
                  Padded with zeros if shorter.
     :param num_of_qubits: Number of qubits. Defaults to the minimum needed for len(data).
-    :param normalize: If True, rescale data to unit norm. If False, data must already be
-                       normalized (raises otherwise).
     :return: A new Circuit whose initial state is the (padded, normalized) data.
     """
     statevector, n = amplitude_statevector(data, num_of_qubits)

@@ -25,6 +25,7 @@ def angle_encoding(data, num_of_qubits: Optional[int] = None, rotation: Union[st
                       One of 'RX', 'RY', 'RZ', 'P' (see AriaQuanta.qml.encoding.base).
     :param scale: Multiplies every feature before it becomes a rotation angle
                   (e.g. scale=math.pi for features already normalized to [-1, 1]).
+    :param start_index: 
     :return: A new Circuit with the angle-encoding rotations applied (not yet run).
     """
     rotations = validate_rotation_names(rotation)
