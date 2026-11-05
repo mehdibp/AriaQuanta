@@ -8,11 +8,10 @@ from AriaQuanta.qml._shared import validate_parameter_shift, validate_parameter_
 # -------------------------------------------------------------------------------------------
 # Generic parameter-shift gradient estimator for any AriaQuanta Ansatz.
 #
-# This is deliberately independent of AriaQuanta.algorithms.eigen_solver.Hamiltonian /
-# find_expectation_value: it only needs `evaluate_fn(ansatz) -> float`, so the same function
-# differentiates a Hamiltonian expectation value (VQE/QAOA-style), a measured class
-# probability (a future qml.models.VQC), or any other scalar readout built on top of an
-# Ansatz -- without qml.gradients depending on qml.models or vice versa.
+# This is deliberately independent of .aqc.hamiltonian.Hamiltonian & .algorithem.eigen_solver.find_expectation_value:
+# it only needs `evaluate_fn(ansatz) -> float`, so the same function differentiates a Hamiltonian expectation value
+# (VQE/QAOA-style), a measured class probability (a future qml.models.VQC), or any other scalar readout built on top 
+# of an Ansatz -- without qml.gradients depending on qml.models or vice versa.
 # -------------------------------------------------------------------------------------------
 
 
@@ -86,7 +85,7 @@ def parameter_shift_gradient_expectation(ansatz: Ansatz, hamiltonian, num_of_ite
     this shape of gradient doesn't need to be re-derived at each call site.
 
     :param ansatz: Ansatz to differentiate (see parameter_shift_gradient).
-    :param hamiltonian: AriaQuanta.algorithms.eigen_solver.Hamiltonian instance.
+    :param hamiltonian: AriaQuanta.aqc.hamiltonian.Hamiltonian instance.
     :param num_of_iter_measure: Number of measurement shots per expectation-value estimate
                     (passed straight through to find_expectation_value -- called
                     2 * len(ansatz.params_names) times, so cost scales accordingly).

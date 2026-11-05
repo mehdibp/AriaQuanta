@@ -1,97 +1,10 @@
-import re
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
-from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit
 from AriaQuanta.backend.simulator import Simulator
 from AriaQuanta.aqc.gatelibrary import H, Sdg
+from AriaQuanta.aqc.hamiltonian import Hamiltonian, parse_pauli_string
 
-
-_PAULI_TOKEN_RE = re.compile(r'([XYZI])(\d*)')
-
-
-# -------------------------------------------------------------------------------------------
-class Hamiltonian:
-    def __init__(self, terms: List[Tuple[str, float]]) -> None:
-        """
-        A Hamiltonian expressed as a weighted sum of Pauli strings.
-
-        :param terms: List of (pauli_string, coefficient) tuples.
-            Example: H = 0.5*Z1 + 0.3*X2*Z3  ->  terms = [("Z1", 0.5), ("X2Z3", 0.3)]
-            Use "I" for a (global) identity term.
-        """
-        self._check_validation(terms)
-
-        self.terms = list(terms)                        # [("Z1", 0.5), ("X2Z3", 0.3)]
-        terms_dict = dict(self.terms)
-
-        self.paulis = list(terms_dict.keys())             # paulis: ['Z1', 'X2Z3']
-        self.coefs = np.array(list(terms_dict.values()))  # [0.5 0.3]
-
-    # ------------------------------------------------------------
-    @staticmethod
-    def _check_validation(terms: List[Tuple[str, float]]):
-        if not isinstance(terms, (list, tuple)) or len(terms) == 0:
-            raise ValueError("'terms' must be a non-empty list of (pauli_string, coefficient) tuples.")
-
-        seen_paulis = set()
-        for i, term in enumerate(terms):
-            if not (isinstance(term, (list, tuple)) and len(term) == 2):
-                raise ValueError("terms[{}] must be a (pauli_string, coefficient) pair, got {!r}.".format(i, term))
-            pauli_string, coef = term
-            parse_pauli_string(pauli_string)     # validates format; raises ValueError if malformed
-            if not isinstance(coef, (int, float, np.floating, np.integer)) or isinstance(coef, bool):
-                raise TypeError( "Coefficient for '{}' must be a real number, got {}.".format(pauli_string, type(coef).__name__) )
-            if pauli_string in seen_paulis:
-                raise ValueError("Duplicate Pauli term '{}' in Hamiltonian terms.".format(pauli_string))
-            seen_paulis.add(pauli_string)
-
-
-# -------------------------------------------------------------------------------------------
-def parse_pauli_string(pauli_string: str, num_of_qubits: Optional[int] = None) -> List[Tuple[int, str]]:
-    """
-    Parse a Pauli string such as 'X0Z2' into its non-identity (qubit, pauli_char) pairs.
-    Identity factors ('I<n>' or the bare global identity string 'I') are dropped, since
-    they don't affect the expectation value or need a basis change.
-
-    :param pauli_string: e.g. 'Z0X1', 'X2Z3', or 'I'.
-    :param num_of_qubits: If given, every referenced qubit index is checked against it.
-    :return: List of (qubit_index, 'X'|'Y'|'Z') pairs, in the order they appear.
-    """
-    if not isinstance(pauli_string, str) or not pauli_string:
-        raise ValueError("pauli_string must be a non-empty string, e.g. 'Z0X1'.")
-
-    if pauli_string == 'I':
-        return []
-
-    tokens = _PAULI_TOKEN_RE.findall(pauli_string)
-    if ''.join(letter + digits for letter, digits in tokens) != pauli_string:
-        raise ValueError(
-            "'{}' is not a valid Pauli string: expected letters from {{X, Y, Z, I}}, "
-            "each followed by a qubit index, e.g. 'Z0X1'.".format(pauli_string)
-        )
-
-    parsed: List[Tuple[int, str]] = []
-    seen_qubits = set()
-    for letter, digits in tokens:
-        if not digits:
-            raise ValueError(
-                "'{}' in Pauli string '{}' is missing a qubit index (expected e.g. '{}0')."
-                .format(letter, pauli_string, letter)
-            )
-        qubit = int(digits)
-        if qubit in seen_qubits:
-            raise ValueError("Qubit {} appears more than once in Pauli string '{}'.".format(qubit, pauli_string))
-        seen_qubits.add(qubit)
-        if num_of_qubits is not None and qubit >= num_of_qubits:
-            raise ValueError(
-                "Pauli string '{}' references qubit {}, but the circuit only has {} qubits."
-                .format(pauli_string, qubit, num_of_qubits)
-            )
-        if letter != 'I':
-            parsed.append((qubit, letter))
-
-    return parsed
 
 # -------------------------------------------------------------------------------------------
 def _term_parity(bits: str, active_qubits: List[int]) -> int:

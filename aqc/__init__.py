@@ -8,7 +8,6 @@ from .qubit import (
 
 from .circuit import (
     Circuit, 
-    # sv_reorder_qubits, 
     sv_to_probabilty, 
     to_gate,
 )
@@ -17,6 +16,14 @@ from .ansatz import (
     Ansatz,
     EfficientSU2Ansatz,
     H2Ansatz,
+)
+
+from .hamiltonian import (
+    _PAULI_TOKEN_RE,
+    PAULI_MATRIX,
+    Hamiltonian,
+    parse_pauli_string,
+    hamiltonian_matrix,
 )
 
 from .noise import (

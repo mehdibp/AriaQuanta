@@ -4,7 +4,8 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit
 from AriaQuanta.aqc.ansatz import Ansatz
-from AriaQuanta.algorithms.eigen_solver import Hamiltonian, find_expectation_value
+from AriaQuanta.aqc.hamiltonian import Hamiltonian
+from AriaQuanta.algorithms.eigen_solver import find_expectation_value
 from AriaQuanta.qml.gradients.parameter_shift import parameter_shift_gradient
 from AriaQuanta.qml.gradients.spsa import spsa_gradient, spsa_perturbation_schedule
 from AriaQuanta.qml.training.loss import Loss
@@ -18,7 +19,7 @@ from AriaQuanta.qml.training.optimizer import Optimizer
 #   feature_map(x)  -- AriaQuanta.qml.encoding / qml.feature_map: embeds one classical
 #                       sample as fixed state-preparation gates (not trained)
 #   + ansatz         -- AriaQuanta.qml.ansatz / aqc.ansatz: the trainable circuit
-#   -> observable    -- AriaQuanta.algorithms.eigen_solver.Hamiltonian, measured via
+#   -> observable    -- AriaQuanta.aqc.hamiltonian.Hamiltonian, measured via
 #                       find_expectation_value to get a raw scalar prediction
 #   -> output_map    -- rescales the raw expectation value onto the scale a given Loss
 #                       expects (identity for MSE/MAE/Hinge; a probability map for the

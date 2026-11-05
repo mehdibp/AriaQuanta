@@ -1,7 +1,8 @@
 from typing import Any, Dict, List, Tuple, Union
 
 from AriaQuanta._utils import np
-from AriaQuanta.algorithms import VQE, Hamiltonian
+from AriaQuanta.algorithms import VQE
+from AriaQuanta.aqc.hamiltonian import Hamiltonian
 from AriaQuanta.aqc.gatelibrary import H, RX, CX, RZ
 from AriaQuanta.aqc.ansatz import Ansatz
 from AriaQuanta.backend import Simulator

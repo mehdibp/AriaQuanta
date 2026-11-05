@@ -8,7 +8,7 @@ from matplotlib.figure import Figure
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit
 from AriaQuanta.aqc.ansatz import Ansatz
-from AriaQuanta.algorithms.eigen_solver import Hamiltonian, parse_pauli_string
+from AriaQuanta.aqc.hamiltonian import Hamiltonian, parse_pauli_string
 from AriaQuanta.qml._shared import PAULI_MATRIX
 
 

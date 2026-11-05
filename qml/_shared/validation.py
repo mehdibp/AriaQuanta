@@ -3,7 +3,7 @@ from typing import List, Sequence, Union, Callable
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.gatelibrary import RX, RY, RZ, P
 from AriaQuanta.aqc.ansatz import Ansatz
-from AriaQuanta.algorithms.eigen_solver import Hamiltonian
+from AriaQuanta.aqc.hamiltonian import Hamiltonian
 
 
 # P has no symbolic-parameter support (see gatesingle.P), so it's excluded from anything that

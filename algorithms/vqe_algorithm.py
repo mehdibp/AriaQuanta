@@ -2,7 +2,8 @@ from typing import List, Optional, Union
 
 from AriaQuanta._utils import np
 from AriaQuanta.aqc.ansatz import Ansatz
-from AriaQuanta.algorithms.eigen_solver import Hamiltonian, find_expectation_value
+from AriaQuanta.algorithms.eigen_solver import find_expectation_value
+from AriaQuanta.aqc.hamiltonian import Hamiltonian
 from scipy.optimize import minimize, OptimizeResult
 
 

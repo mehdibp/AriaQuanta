@@ -2,11 +2,7 @@
 # init, AriaQuanta.algorithms
 
 # usefull operations:
-from .eigen_solver import (
-    Hamiltonian,
-    find_expectation_value,
-    parse_pauli_string,
-)
+from .eigen_solver import find_expectation_value
 
 # qc = dj(n_qubits, is_constant=True)
 from .dj_algorithm import dj

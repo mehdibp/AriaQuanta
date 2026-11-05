@@ -1,5 +1,5 @@
 from AriaQuanta._utils import np
-from AriaQuanta.aqc.gatelibrary import X, Y, Z
+from AriaQuanta.aqc.hamiltonian import PAULI_MATRIX
 
 
 # -------------------------------------------------------------------------------------------
@@ -9,8 +9,6 @@ from AriaQuanta.aqc.gatelibrary import X, Y, Z
 # GateCustom's own embedding). Kept here, one level above encoding/feature_map/ansatz, so
 # neither sub-package has to import from the other for it.
 # -------------------------------------------------------------------------------------------
-
-PAULI_MATRIX = {'X': X().matrix, 'Y': Y().matrix, 'Z': Z().matrix, 'I': np.eye(2, dtype=complex)}
 
 # -------------------------------------------------------------------------------------------
 def pauli_tensor_matrix(pauli_chars) -> np.ndarray:
