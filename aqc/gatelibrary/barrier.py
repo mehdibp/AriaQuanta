@@ -18,6 +18,7 @@ class Barrier:
     """
     name = 'Barrier'
     matrix = None
+    is_directive = True     # visual/structural marker, not a real operation
 
     def __init__(self, target_qubits: Optional[List[int]] = None) -> None:
         self._target_qubits = None if target_qubits is None else list(target_qubits)

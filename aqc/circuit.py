@@ -153,26 +153,13 @@ class Circuit:
 
     # ------------------------------------------------------------
     def get_depth(self) -> int:
-        depth = 0
-        if len(self.gates) > 0:
-            depth += 1
-            gates = self.gates
-            qubits_i = gates[0].qubits
-            qubits_previous = []
-
-            qubits_previous = qubits_i
-
-            for i in range(1, len(gates)):
-                qubits_i = gates[i].qubits
-                flag = np.in1d(qubits_i,qubits_previous).any()
-
-                if flag:
-                    depth += 1
-                    qubits_previous = qubits_i
-                else:
-                    qubits_previous = np.concatenate((qubits_previous, qubits_i))                        
-
-        return depth     
+        levels = [0] * self.num_of_qubits   # The last layer in which each qubit was involved
+        for gate in self.operations:
+            qubits = gate.qubits
+            level = max(levels[q] for q in qubits) + 1
+            for q in qubits:
+                levels[q] = level
+        return max(levels, default=0)    
 
     # ------------------------------------------------------------
     def reset(self) -> "Circuit":
@@ -197,14 +184,19 @@ class Circuit:
         return reorder_state(self.statevector)
 
     @property
+    def operations(self) -> List[GateBase]:
+        """Real operations only (gates, measurements, classical control); directives like Barrier are excluded."""
+        return [g for g in self.gates if not getattr(g, 'is_directive', False)]
+
+    @property
     def size(self) -> int:
-        return len(self.gates)
+        return len(self.operations)
 
     @property   # Type and number of gates used in the circuit ---
     def gatesinfo(self) -> Dict[str, int]:
         gatesinfo_dict: Dict[str, int] = {}
 
-        for gate in self.gates:
+        for gate in self.operations:
             if gate.name in gatesinfo_dict: gatesinfo_dict[gate.name] += 1
             else:                           gatesinfo_dict[gate.name]  = 1  
         return gatesinfo_dict
