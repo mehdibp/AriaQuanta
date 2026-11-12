@@ -10,6 +10,7 @@ from AriaQuanta.qml.gradients.parameter_shift import parameter_shift_gradient
 from AriaQuanta.qml.gradients.spsa import spsa_gradient, spsa_perturbation_schedule
 from AriaQuanta.qml.training.loss import Loss
 from AriaQuanta.qml.training.optimizer import Optimizer
+from AriaQuanta.qml.models.persistence import save_params, load_params, read_params
 
 
 # -------------------------------------------------------------------------------------------
@@ -350,6 +351,22 @@ class VQC:
 
         self.history = history
         return history
+
+
+    # ------------------------------------------------------------
+    def save(self, path: str) -> None:
+        """Saves the trained ansatz parameters (and the training history) to a JSON file."""
+        save_params(self.ansatz, path, extra={'history': self.history})
+
+    def load(self, path: str, strict: bool = True) -> List[str]:
+        """
+        Loads saved parameters into self.ansatz (see persistence.load_params for strict) and
+        restores the saved training history. Returns the names of the loaded parameters.
+        """
+        loaded = load_params(self.ansatz, path, strict=strict)
+        self.history = read_params(path)['extra'].get('history', self.history)
+        return loaded
+
 
     # ------------------------------------------------------------
     @staticmethod

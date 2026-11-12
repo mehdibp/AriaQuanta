@@ -26,14 +26,14 @@ class DataReUploadingAnsatz(Ansatz):
     parameter_shift_gradient / spsa_gradient only differentiate w.r.t. the weights.
 
     Two ways to use it:
-        - with VQC:        ansatz = DataReUploadingAnsatz(n_features=4, n_layers=3)
+        - with VQC:        ansatz = DataReUploadingAnsatz(n_features=4, reps=3)
                             VQC(feature_map=None, ansatz=ansatz, ...)   # VQC binds each sample itself
-        - standalone:      DataReUploadingAnsatz(data=x, n_layers=3)   # inputs bound immediately,
+        - standalone:      DataReUploadingAnsatz(data=x, reps=3)   # inputs bound immediately,
                             rebind later with set_input_values(x_new)   # (the old behaviour)
 
     :param data: Optional classical feature vector. If given, it is bound immediately
                     (and fixes n_features). If None, n_features is required.
-    :param n_layers: Number of re-uploading layers.
+    :param reps: Number of re-uploading layers.
     :param encoding_rotation: Rotation gate name (or list, for dense encoding) used for the
                                fixed data-upload layers. One of 'RX', 'RY', 'RZ', 'P'.
     :param trainable_rotation: Rotation gate name (or list) used for the trainable weight
@@ -44,13 +44,13 @@ class DataReUploadingAnsatz(Ansatz):
     :param scale: Multiplies every feature before it becomes an encoding angle (applied inside set_input_values).
     :param n_features: Length of the input vector (required when data is None).
     """
-    def __init__(self, data=None, n_layers: int=1,
+    def __init__(self, data=None, reps: int=1,
                  encoding_rotation: Union[str, Sequence[str]]='RY',
                  trainable_rotation: Union[str, Sequence[str]]='RY',
                  entangle: bool=True, num_of_qubits: Optional[int]=None, scale: float=1.0, 
                  start_index: int=0, n_features: Optional[int]=None) -> None:
 
-        features, n_features = self._check_validation(data, n_layers, n_features)
+        features, n_features = self._check_validation(data, reps, n_features)
 
         encoding_rotations  = validate_rotation_names(encoding_rotation)
         trainable_rotations = validate_rotation_names(trainable_rotation, trainable=True)
@@ -66,7 +66,7 @@ class DataReUploadingAnsatz(Ansatz):
 
         params_names = [
             'theta_l{}_q{}_{}'.format(layer, q, name)
-            for layer in range(n_layers) for q in range(n) for name in trainable_rotations
+            for layer in range(reps) for q in range(n) for name in trainable_rotations
         ]
         input_names = ['x{}'.format(i) for i in range(n_features)]
         self.scale = scale                                  # must exist before set_input_values can run
@@ -74,12 +74,12 @@ class DataReUploadingAnsatz(Ansatz):
 
         self.data = features
         self.n_features = n_features
-        self.n_layers = n_layers
+        self.reps = self.num_of_layers = reps
         self.encoding_rotations = encoding_rotations
         self.trainable_rotations = trainable_rotations
 
         param_iter = iter(params_names)
-        for layer in range(n_layers):
+        for layer in range(self.num_of_layers):
             flag = False
             idx = start_index
             for q in range(n):                  # data upload (symbolic inputs)
@@ -112,9 +112,9 @@ class DataReUploadingAnsatz(Ansatz):
 
     # ------------------------------------------------------------
     @staticmethod
-    def _check_validation(data, n_layers: int, n_features: Optional[int]):
-        if n_layers < 1:
-            raise ValueError("'n_layers' must be at least 1, got {}.".format(n_layers))
+    def _check_validation(data, reps: int, n_features: Optional[int]):
+        if reps < 1:
+            raise ValueError("'reps' (Number of layers) must be at least 1, got {}.".format(reps))
 
         if data is not None:
             features = validate_features(data)

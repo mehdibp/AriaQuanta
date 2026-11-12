@@ -78,6 +78,10 @@ from .models import (
     OutputMap,
     IdentityOutputMap,
     ZToProbabilityOutputMap,
+
+    save_params,
+    load_params,
+    read_params
 )
 
 from .diagnostics import (
