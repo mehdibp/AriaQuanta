@@ -45,6 +45,7 @@ from .ansatz import (
 
 from .gradients import (
     parameter_shift_gradient,
+    parameter_shift_jacobian,
     parameter_shift_gradient_expectation,
     spsa_gradient,
     spsa_perturbation_schedule,
@@ -78,6 +79,7 @@ from .models import (
     OutputMap,
     IdentityOutputMap,
     ZToProbabilityOutputMap,
+    SoftmaxOutputMap,
 
     save_params,
     load_params,

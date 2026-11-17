@@ -12,9 +12,70 @@ from AriaQuanta.qml._shared import validate_parameter_shift, validate_parameter_
 # it only needs `evaluate_fn(ansatz) -> float`, so the same function differentiates a Hamiltonian expectation value
 # (VQE/QAOA-style), a measured class probability (a future qml.models.VQC), or any other scalar readout built on top 
 # of an Ansatz -- without qml.gradients depending on qml.models or vice versa.
+#
+# parameter_shift_jacobian is the vector-valued version (evaluate_fn returns K numbers -- e.g. the
+# K observable expectation values of a multi-class VQC) and is the single implementation of the
+# rule; parameter_shift_gradient is its K = 1 special case.
 # -------------------------------------------------------------------------------------------
 
 
+def parameter_shift_jacobian(ansatz: Ansatz, evaluate_fn: Callable[[Ansatz], Union[List[float], np.ndarray]],
+                            params_values: Optional[Union[List[float], np.ndarray]]=None, shift: float=np.pi/2) -> np.ndarray:
+    """
+    Jacobian J[k, i] = d(evaluate_fn_k)/d(θ_i) of a vector-valued readout f(θ) = (f_0, ..., f_{K-1})
+    with respect to every trainable parameter in ansatz.params_names, by the parameter-shift rule:
+
+        J[:, i] = ( f(θ_i + shift) - f(θ_i - shift) ) / (2 * sin(shift))
+
+    Same exactness conditions as parameter_shift_gradient (every f_k must be a raw expectation
+    value, sinusoidal in each rotation-gate parameter -- never a loss composed with one).
+
+    :param ansatz: Ansatz to differentiate. Left bound to the point the Jacobian was taken at
+                    (params_values, or its own current values if not given) when this returns.
+    :param evaluate_fn: Callable(ansatz) -> array-like of K floats (K must be the same on every
+                    call). Called 2 * len(ansatz.params_names) times in total -- independent of K,
+                    so K observables measured from the same circuit run cost no more than one.
+    :param params_values: Point to differentiate at. Defaults to ansatz.params_values.
+    :param shift: Shift amount in radians (not a multiple of π). Default π/2.
+    :return: Array of shape (K, len(ansatz.params_names)).
+    """
+    if not isinstance(ansatz, Ansatz):      # checked first: base_values below reads ansatz.params_values
+        raise TypeError("'ansatz' must be an Ansatz instance, got {}.".format(type(ansatz).__name__))
+
+    if params_values is None: base_values = np.array(ansatz.params_values, dtype=float).copy()
+    else: base_values = np.asarray(params_values, dtype=float).flatten().copy()
+
+    validate_parameter_shift(ansatz, evaluate_fn, shift, base_values)
+
+    n = len(ansatz.params_names)
+    denom = 2.0 * np.sin(shift)
+
+    columns = []
+    try:
+        for i in range(n):
+            plus_values = base_values.copy()
+            plus_values[i] += shift
+            ansatz.set_params_values(plus_values)
+            f_plus = np.asarray(evaluate_fn(ansatz), dtype=float).reshape(-1)
+
+            minus_values = base_values.copy()
+            minus_values[i] -= shift
+            ansatz.set_params_values(minus_values)
+            f_minus = np.asarray(evaluate_fn(ansatz), dtype=float).reshape(-1)
+
+            if f_plus.shape != f_minus.shape:
+                raise ValueError("'evaluate_fn' must return the same number of outputs on every call, got {} and {}."
+                                 .format(f_plus.size, f_minus.size))
+            columns.append((f_plus - f_minus) / denom)
+    finally:
+        # leave the ansatz bound to the point the gradient was taken at, regardless of
+        # whether evaluate_fn raised partway through the loop above
+        ansatz.set_params_values(base_values)
+
+    return np.stack(columns, axis=1)
+
+
+# -------------------------------------------------------------------------------------------
 def parameter_shift_gradient(ansatz: Ansatz, evaluate_fn: Callable[[Ansatz], float],
                             params_values: Optional[Union[List[float], np.ndarray]]=None, shift: float=np.pi/2) -> np.ndarray:
     """
@@ -29,9 +90,9 @@ def parameter_shift_gradient(ansatz: Ansatz, evaluate_fn: Callable[[Ansatz], flo
     shift=π/2 (the default) is the standard, best-conditioned choice, since sin(π/2) = 1.
 
     :param ansatz: Ansatz to differentiate. Its parameters are repeatedly overwritten via
-                    set_params_values() during evaluation, and restored to their original
-                    values (params_values, or ansatz.params_values if not given) before
-                    this function returns -- so the ansatz is left exactly as it was found.
+                    set_params_values() during evaluation, and left bound to the point the
+                    gradient was taken at (params_values, or its own current values if not
+                    given) when this function returns.
     :param evaluate_fn: Callable that takes `ansatz` (with parameters already bound for this
                     call) and returns a single float, e.g.:
                         lambda a: find_expectation_value(a, hamiltonian, shots)[1]
@@ -42,36 +103,10 @@ def parameter_shift_gradient(ansatz: Ansatz, evaluate_fn: Callable[[Ansatz], flo
                     zero, making the estimator undefined). Default π/2.
     :return: Gradient vector, same length and order as ansatz.params_names.
     """
+    def scalar_evaluate_fn(a: Ansatz) -> List[float]:
+        return [float(evaluate_fn(a))]      # float() keeps the old contract: evaluate_fn must return a scalar
 
-    # _resolve_base_values
-    if params_values is None: base_values = np.array(ansatz.params_values, dtype=float).copy()
-    else: base_values = np.asarray(params_values, dtype=float).flatten().copy()
-
-    validate_parameter_shift(ansatz, evaluate_fn, shift, base_values)
-
-    n = len(ansatz.params_names)
-    denom = 2.0 * np.sin(shift)
-
-    gradient = np.zeros(n)
-    try:
-        for i in range(n):
-            plus_values = base_values.copy()
-            plus_values[i] += shift
-            ansatz.set_params_values(plus_values)
-            f_plus = float(evaluate_fn(ansatz))
-
-            minus_values = base_values.copy()
-            minus_values[i] -= shift
-            ansatz.set_params_values(minus_values)
-            f_minus = float(evaluate_fn(ansatz))
-
-            gradient[i] = (f_plus - f_minus) / denom
-    finally:
-        # leave the ansatz bound to the point the gradient was taken at, regardless of
-        # whether evaluate_fn raised partway through the loop above
-        ansatz.set_params_values(base_values)
-
-    return gradient
+    return parameter_shift_jacobian(ansatz, scalar_evaluate_fn, params_values=params_values, shift=shift)[0]
 
 
 # -------------------------------------------------------------------------------------------

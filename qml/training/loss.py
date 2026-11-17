@@ -188,9 +188,18 @@ class BinaryCrossEntropyLoss(Loss):
 class CategoricalCrossEntropyLoss(Loss):
     """
     Categorical cross-entropy: mean_over_samples(-sum_over_classes(y_true * log(p))).
-    y_pred: shape (n_samples, n_classes) probability distributions (rows summing to ~1).
-    y_true: either one-hot, same shape as y_pred, or a 1-D vector of integer class labels
-            (one label per sample) -- converted to one-hot internally.
+    y_pred: shape (n_samples, n_classes) probability distributions (rows summing to ~1), or
+            shape (n_classes,) for one sample.
+    y_true: integer class labels or one-hot, interpreted by the SHAPE of y_pred:
+            - y_pred (n_samples, n_classes): y_true (n_samples,) = integer labels, or
+              (n_samples, n_classes) = one-hot;
+            - y_pred (n_classes,) (one sample): y_true of size 1 (or a scalar) = its integer
+              label, or of size n_classes = its one-hot vector.
+            (A 1-D y_true next to a 2-D y_pred is always read as labels -- including when
+            n_samples happens to equal n_classes.)
+    gradient() is d(loss)/d(p) with p the probabilities themselves (not the logits); with a
+    softmax OutputMap, VQC chains it through the softmax Jacobian, giving (p - y_true) / n_samples
+    with respect to the raw logits -- the same gradient as torch.nn.CrossEntropyLoss.
     """
 
     def __call__(self, y_pred, y_true) -> float:
@@ -209,28 +218,34 @@ class CategoricalCrossEntropyLoss(Loss):
     @staticmethod
     def _validate_categorical(y_pred, y_true) -> "tuple[np.ndarray, np.ndarray]":
         y_pred = np.asarray(y_pred, dtype=float)
-        if y_pred.ndim == 1:
+        single_sample = (y_pred.ndim == 1)
+        if single_sample:
             y_pred = y_pred.reshape(1, -1)
         if y_pred.ndim != 2:
             raise ValueError("'y_pred' must be 1-D (one sample) or 2-D (n_samples, n_classes), got shape {}.".format(y_pred.shape))
         Loss._validate_probabilities(y_pred)
+        n_samples, n_classes = y_pred.shape
 
         y_true = np.asarray(y_true)
-        if y_true.ndim == 1 and y_true.shape[0] != y_pred.shape[1]:
-            # a vector of integer class labels, one per sample -- expand to one-hot
-            n_samples, n_classes = y_pred.shape
-            if y_true.shape[0] != n_samples:
-                raise ValueError("'y_true' must have one label per sample ({}), got {}.".format(n_samples, y_true.shape[0]))
-            labels = y_true.astype(int)
-            if np.any(labels < 0) or np.any(labels >= n_classes):
-                raise ValueError("Integer labels in 'y_true' must be in [0, {}), got {}.".format(n_classes, labels))
-            one_hot = np.zeros((n_samples, n_classes))
-            one_hot[np.arange(n_samples), labels] = 1.0
-            y_true = one_hot
+        if y_true.ndim > 2:
+            raise ValueError("'y_true' must be at most 2-D, got shape {}.".format(y_true.shape))
+
+        if y_true.ndim == 2:
+            y_true = y_true.astype(float)                       # one-hot, one row per sample
         else:
-            y_true = y_true.astype(float)
-            if y_true.ndim == 1:
-                y_true = y_true.reshape(1, -1)
+            y_true = y_true.reshape(-1)
+            if single_sample and n_classes > 1 and y_true.size == n_classes:
+                y_true = y_true.astype(float).reshape(1, -1)    # the one-hot vector of the single sample
+            else:
+                # a vector of integer class labels, one per sample -- expand to one-hot
+                if y_true.shape[0] != n_samples:
+                    raise ValueError("'y_true' must have one label per sample ({}), got {}.".format(n_samples, y_true.shape[0]))
+                labels = y_true.astype(int)
+                if np.any(labels < 0) or np.any(labels >= n_classes):
+                    raise ValueError("Integer labels in 'y_true' must be in [0, {}), got {}.".format(n_classes, labels))
+                one_hot = np.zeros((n_samples, n_classes))
+                one_hot[np.arange(n_samples), labels] = 1.0
+                y_true = one_hot
 
         if y_true.shape != y_pred.shape:
             raise ValueError("'y_true' must have shape {} (one-hot) or ({},) (integer labels), got {}.".format(y_pred.shape, y_pred.shape[0], y_true.shape))
