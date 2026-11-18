@@ -35,7 +35,7 @@ def hamiltonian_encoding(data, pauli_strings: Sequence[str], t: float=1.0, num_o
     hamiltonian = Hamiltonian(list(zip(pauli_strings, data_arr.tolist())))   # validates format/duplicates
 
     if num_of_qubits is None:
-        hamiltonian.min_num_of_qubits()
+        num_of_qubits = hamiltonian.min_num_of_qubits()
 
     matrix = hamiltonian_matrix(hamiltonian.paulis, hamiltonian.coefs, num_of_qubits)
     unitary = expm(-1j * t * matrix)
