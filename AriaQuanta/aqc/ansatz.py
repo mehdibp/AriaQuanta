@@ -5,7 +5,7 @@ from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit
 from AriaQuanta.aqc.qubit import Qubit
 from AriaQuanta.aqc.measure import Measure, MeasureQubit
-from AriaQuanta.aqc.gatelibrary import GateBase, GateSingleQubit, RY, RZ, CX, CRX, RXX, RYY, Barrier
+from AriaQuanta.aqc.gatelibrary import GateBase, GateSingleQubit, CX, CRX, RXX, RYY, Barrier
 
 
 # parametrized circuit ----------------------------------------------------------------------
@@ -155,30 +155,6 @@ class Ansatz(Circuit):
         if overlap:
             raise ValueError("'input_names' and 'params_names' must be disjoint, both contain {}.".format(sorted(overlap)))
 
-
-# -------------------------------------------------------------------------------------------
-class EfficientSU2Ansatz(Ansatz):
-    def __init__(self, num_of_qubits: int, reps: int=3) -> None:
-        if num_of_qubits < 1:
-            raise ValueError("'num_of_qubits' must be at least 1, got {}.".format(num_of_qubits))
-        if reps < 0:
-            raise ValueError("'reps' must be non-negative, got {}.".format(reps))
-
-        num_of_layers = reps + 1
-        params_names = ['theta' + str(i) for i in range(num_of_layers * 2 * num_of_qubits)]
-        super().__init__(num_of_qubits, params_names)
-
-        for layer in range(num_of_layers):
-            base = layer * 2 * num_of_qubits
-
-            for q in range(num_of_qubits):
-                self.add_gate(RY(params_names[base + q], q))
-            for q in range(num_of_qubits):
-                self.add_gate(RZ(params_names[base + num_of_qubits + q], q))
-
-            if layer < reps:                                 # no entangler after the final rotation layer
-                for q in range(num_of_qubits - 1):
-                    self.add_gate(CX(q, q + 1))              
 
 # -------------------------------------------------------------------------------------------
 class H2Ansatz(Ansatz):

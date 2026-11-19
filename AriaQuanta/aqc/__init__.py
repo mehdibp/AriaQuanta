@@ -14,7 +14,6 @@ from .circuit import (
 
 from .ansatz import (
     Ansatz,
-    EfficientSU2Ansatz,
     H2Ansatz,
 )
 

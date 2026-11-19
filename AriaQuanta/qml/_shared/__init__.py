@@ -11,6 +11,9 @@ from .validation import (
     validate_parameter_shift,
     validate_parameter_shift_expectation,
     validate_words,
+
+    validate_X,
+    validate_y,
 )
 
 from .pauli import PAULI_MATRIX, pauli_tensor_matrix, pauli_evolution_matrix

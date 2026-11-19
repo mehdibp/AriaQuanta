@@ -5,24 +5,20 @@ from AriaQuanta._utils import np
 from AriaQuanta.aqc.circuit import Circuit
 from AriaQuanta.aqc.ansatz import Ansatz
 from AriaQuanta.aqc.hamiltonian import Hamiltonian
-from AriaQuanta.algorithms.eigen_solver import find_expectation_value
-from AriaQuanta.qml.gradients.parameter_shift import parameter_shift_jacobian
 from AriaQuanta.qml.gradients.spsa import spsa_gradient, spsa_perturbation_schedule
 from AriaQuanta.qml.training.loss import Loss
 from AriaQuanta.qml.training.optimizer import Optimizer
+from AriaQuanta.qml.models.qnn import QNN
 from AriaQuanta.qml.models.persistence import save_params, load_params, read_params
+from AriaQuanta.qml._shared import validate_X, validate_y
 
 
 # -------------------------------------------------------------------------------------------
-# Variational Quantum Classifier/Regressor -- the piece that ties every earlier qml.*
-# module together into something end-to-end trainable:
+# Variational Quantum Classifier/Regressor -- a QNN (qnn.py: feature_map + ansatz + observables
+# -> raw expectation values and their Jacobian) plus everything needed to train it:
 #
-#   feature_map(x)  -- AriaQuanta.qml.encoding / qml.feature_map: embeds one classical
-#                       sample as fixed state-preparation gates (not trained)
-#   + ansatz         -- AriaQuanta.qml.ansatz / aqc.ansatz: the trainable circuit
-#   -> observable(s) -- AriaQuanta.aqc.hamiltonian.Hamiltonian (one, or a list of K), measured
-#                       via find_expectation_value to get the raw prediction: a scalar, or a
-#                       vector of K expectation values (one output per observable)
+#   qnn              -- AriaQuanta.qml.models.qnn.QNN: raw prediction, a scalar or a vector of K
+#                       expectation values, and d(raw)/d(theta)
 #   -> output_map    -- maps the raw prediction onto the scale a given Loss expects (identity
 #                       for MSE/MAE/Hinge; a probability map for binary cross-entropy;
 #                       softmax for multi-class categorical cross-entropy)
@@ -32,28 +28,22 @@ from AriaQuanta.qml.models.persistence import save_params, load_params, read_par
 #
 # The gradient VQC.fit() uses, for one sample (x, y_true), with K outputs and P parameters:
 #
-#   D = d(raw)/d(theta)    = parameter_shift_jacobian(ansatz, raw_prediction_fn)   (K, P)   -- [1]
+#   D = d(raw)/d(theta)    = qnn.backward_sample(x)                                (K, P)   -- [1]
 #   J = d(output)/d(raw)   = output_map.jacobian(raw)                              (K, K)   -- [2]
 #   g = d(loss)/d(output)  = loss.gradient(output, y_true)                         (K,)     -- [3]
 #   d(loss)/d(theta)       = g @ J @ D                                             (P,)     (chain rule)
 #
-# For a single observable K = 1 and everything collapses to the scalar chain rule used before
-# (J is the 1x1 matrix [output_map.derivative(raw)]). For an elementwise OutputMap J is diagonal;
-# for softmax it is the full matrix  scale * (diag(s) - s s^T).
+# For a single observable K = 1 and everything collapses to the scalar chain rule (J is the 1x1
+# matrix [output_map.derivative(raw)]). For an elementwise OutputMap J is diagonal; for softmax
+# it is the full matrix  scale * (diag(s) - s s^T).
 #
-# [1] is exact via parameter-shift *only* because raw_prediction_fn returns the raw
-# observable expectation values (sinusoidal in each ansatz parameter) -- never the loss
-# value itself. Composing evaluate_fn = loss(prediction(theta)) and parameter-shifting
-# *that* directly is mathematically wrong, not merely imprecise: it silently returns a
-# different, unrelated quantity (see AriaQuanta.qml.gradients.parameter_shift's docstring
-# for the analytic proof). This is exactly why every Loss exposes gradient() as a
-# first-class method, and why this file -- not qml.gradients or qml.training -- is where
-# that composition is allowed to happen.
-#
-# Cost of K observables: all K are estimated from the SAME circuit run -- the union of their
-# Pauli strings is measured once (every Z-type string shares one Z-basis simulation), so a
-# multi-class model with Z0, Z1, Z2 readouts costs the same number of circuit evaluations as a
-# single-observable one.
+# [1] is exact via parameter-shift *only* because the QNN returns the raw observable expectation
+# values (sinusoidal in each ansatz parameter) -- never the loss value itself. Composing
+# loss(prediction(theta)) and parameter-shifting *that* directly is mathematically wrong, not
+# merely imprecise: it silently returns a different, unrelated quantity (see
+# AriaQuanta.qml.gradients.parameter_shift's docstring for the analytic proof). This is exactly
+# why every Loss exposes gradient() as a first-class method, and why this file -- not
+# qml.gradients, qml.training or the QNN -- is where that composition is allowed to happen.
 #
 # gradient_method='spsa' selects a second, structurally different path: spsa_gradient perturbs
 # every parameter simultaneously and evaluates the *full* loss at theta +/- c_k*delta -- 2
@@ -160,7 +150,10 @@ class SoftmaxOutputMap(OutputMap):
 # -------------------------------------------------------------------------------------------
 class VQC:
     """
-    Variational Quantum Classifier/Regressor.
+    Variational Quantum Classifier/Regressor: a QNN (see qnn.py) plus an output map, a loss and
+    an optimizer. The QNN is built from feature_map / ansatz / observable / num_of_iter_measure /
+    initial_params / random_state and is available as `self.qnn`; `self.ansatz`,
+    `self.feature_map`, `self.observables`, ... are read-only shortcuts to it.
 
     :param feature_map: Callable(x) -> Circuit embedding one classical sample x as fixed
                     state-preparation gates, e.g. `lambda x: angle_encoding(x, num_of_qubits=n)`
@@ -185,15 +178,13 @@ class VQC:
                     cross-entropy loss, SoftmaxOutputMap (K >= 2 observables) with
                     CategoricalCrossEntropyLoss.
     :param initial_params: Starting parameter values for the ansatz. Defaults to a
-                    uniform-random draw in [-pi, pi) (seeded by random_state) -- an
-                    ansatz's gates are symbolic (unbound) until set_params_values() is
-                    called at least once, so VQC always binds something at construction.
+                    uniform-random draw in [-pi, pi) (seeded by random_state).
     :param random_state: Seeds the default random initial_params draw. Ignored if
                     initial_params is given explicitly.
     :param gradient_method: How fit() obtains d(loss)/d(theta):
-                    'parameter_shift' (default) -- exact chain rule: parameter-shift Jacobian of the raw
-                        expectation(s) x output_map.jacobian() x loss.gradient(). 2*n_params + 1
-                        circuit evaluations per sample (independent of K); the loss must implement gradient().
+                    'parameter_shift' (default) -- exact chain rule: QNN Jacobian x output_map.jacobian()
+                        x loss.gradient(). 2*n_params + 1 circuit evaluations per sample (independent
+                        of K); the loss must implement gradient().
                     'spsa' -- SPSA estimate of the full loss's gradient. 3 evaluations per
                         sample regardless of n_params; works with any Loss (gradient() not
                         needed). Noisy by design: pair it with qml.training.SPSA (decaying
@@ -210,18 +201,13 @@ class VQC:
                  random_state: Optional[int] = None, gradient_method: str = 'parameter_shift',
                  spsa_c: float = 0.2, spsa_gamma: float = 0.101) -> None:
 
-        self._check_init(feature_map, ansatz, observable, loss, optimizer, num_of_iter_measure, output_map)
+        self._check_init(loss, optimizer, output_map)
         self._check_gradient_options(gradient_method, spsa_c, spsa_gamma)
 
-        self.feature_map = feature_map
-        self.ansatz = ansatz
-        self.observable = observable
-        self.multi_output = not isinstance(observable, Hamiltonian)
-        self.observables: List[Hamiltonian] = [observable] if not self.multi_output else list(observable)
-        self.num_of_outputs = len(self.observables)
+        self.qnn = QNN(feature_map, ansatz, observable, num_of_iter_measure=num_of_iter_measure,
+                       initial_params=initial_params, random_state=random_state)
         self.loss = loss
         self.optimizer = optimizer
-        self.num_of_iter_measure = num_of_iter_measure
         self.output_map = output_map if output_map is not None else IdentityOutputMap()
         self.gradient_method = gradient_method
         self.spsa_c = spsa_c
@@ -231,54 +217,8 @@ class VQC:
         if isinstance(self.output_map, SoftmaxOutputMap) and self.num_of_outputs < 2:
             raise ValueError("SoftmaxOutputMap needs at least 2 observables (one per class), got {}.".format(self.num_of_outputs))
 
-        # One merged readout: every distinct Pauli string of every observable is measured once
-        # (coefficient 1.0), then observable k is rebuilt as  raw_k = sum_t C[k, t] * <P_t>.
-        self._readout_paulis: List[str] = list(dict.fromkeys(p for h in self.observables for p in h.paulis))
-        self._readout_hamiltonian = Hamiltonian([(p, 1.0) for p in self._readout_paulis])
-        self._readout_coefs = np.zeros((self.num_of_outputs, len(self._readout_paulis)))
-        for k, h in enumerate(self.observables):
-            for pauli, coef in zip(h.paulis, h.coefs):
-                self._readout_coefs[k, self._readout_paulis.index(pauli)] = float(coef)
-
-        if initial_params is None:
-            rng = np.random.default_rng(random_state)
-            initial_params = rng.uniform(-np.pi, np.pi, size=len(ansatz.params_names))
-        self.ansatz.set_params_values(initial_params)
-
         self.history: Dict[str, List[float]] = {'loss': []}
 
-
-    # ------------------------------------------------------------
-    def _build_circuit_for(self, x: np.ndarray, ansatz: Ansatz) -> Circuit:
-        if self.feature_map is None:
-            # data lives inside the ansatz as symbolic inputs: bind this sample and run the ansatz as is
-            ansatz.set_input_values(x)
-            return ansatz
-        
-        encoding_circuit = self.feature_map(x)
-        if not isinstance(encoding_circuit, Circuit):
-            raise TypeError("'feature_map' must return a Circuit, got {}.".format(type(encoding_circuit).__name__))
-        if encoding_circuit.num_of_qubits != ansatz.num_of_qubits:
-            raise ValueError(
-                "feature_map(x) produced a {}-qubit circuit but the ansatz has {} qubits -- "
-                "they must act on the same number of qubits.".format(encoding_circuit.num_of_qubits, ansatz.num_of_qubits)
-            )
-        circuit = Circuit(ansatz.num_of_qubits)
-        circuit.gates = list(encoding_circuit.gates) + list(ansatz.gates)
-        # amplitude_encoding sets initial_state instead of adding gates -- without this the
-        # model would silently see |0...0> instead of the data
-        circuit.initial_state = encoding_circuit.initial_state
-        circuit.statevector = encoding_circuit.initial_state
-
-        return circuit
-
-    def _raw_expectations(self, x: np.ndarray, ansatz: Optional[Ansatz] = None) -> np.ndarray:
-        """The K raw observable expectation values of one sample, shape (K,) -- from a single merged measurement."""
-        ansatz = ansatz if ansatz is not None else self.ansatz
-        circuit = self._build_circuit_for(x, ansatz)
-        per_term, _ = find_expectation_value(circuit, self._readout_hamiltonian, self.num_of_iter_measure)
-        term_values = np.array([per_term[p] for p in self._readout_paulis], dtype=float)
-        return self._readout_coefs @ term_values
 
     # ------------------------------------------------------------
     def predict_raw(self, X: np.ndarray) -> np.ndarray:
@@ -286,8 +226,7 @@ class VQC:
         Raw observable expectation value(s), before output_map.
         Shape (n_samples,) for a single observable, (n_samples, K) for a list of K observables.
         """
-        X = self._validate_X(X)
-        raw = np.array([self._raw_expectations(x) for x in X])
+        raw = self.qnn.forward(X)
         return raw if self.multi_output else raw[:, 0]
 
     def predict(self, X: np.ndarray) -> np.ndarray:
@@ -306,7 +245,7 @@ class VQC:
     def evaluate(self, X: np.ndarray, y: np.ndarray) -> float:
         """Mean self.loss over (X, y). No training, no gradient computation."""
         y_pred = self.predict(X)
-        y_true = self._validate_y(y)
+        y_true = validate_y(y, self.num_of_outputs, self.multi_output)
         if y_pred.shape[0] != y_true.shape[0]:
             raise ValueError("'X' and 'y' must have the same number of samples, got {} and {}.".format(y_pred.shape[0], y_true.shape[0]))
         return self.loss(y_pred, y_true)
@@ -323,8 +262,8 @@ class VQC:
     def _gradient_spsa(self, x: np.ndarray, y_true: np.ndarray, c: float, seed: Optional[int]) -> Tuple[np.ndarray, float]:
         """SPSA estimate of the full loss's gradient: no chain rule, so no loss.gradient()/output_map.jacobian()."""
 
-        def loss_fn(a: Ansatz) -> float:
-            output = self.output_map.forward(self._raw_expectations(x, ansatz=a))
+        def loss_fn(_ansatz: Ansatz) -> float:        # spsa_gradient rebinds self.ansatz in place, which is what the QNN evaluates
+            output = self.output_map.forward(self.qnn.forward_sample(x))
             return float(self.loss(output, y_true))
 
         gradient = spsa_gradient(self.ansatz, loss_fn, c=c, seed=seed)
@@ -332,12 +271,8 @@ class VQC:
 
     def _gradient_parameter_shift(self, x: np.ndarray, y_true: np.ndarray) -> Tuple[np.ndarray, float]:
         """The exact chain-rule gradient of self.loss for one sample (see the module docstring)."""
-
-        def raw_prediction_fn(a: Ansatz) -> np.ndarray:
-            return self._raw_expectations(x, ansatz=a)
-
-        raw = raw_prediction_fn(self.ansatz)                                    # (K,)
-        d_raw_d_theta = parameter_shift_jacobian(self.ansatz, raw_prediction_fn)  # (K, P)
+        raw = self.qnn.forward_sample(x)                                        # (K,)
+        d_raw_d_theta = self.qnn.backward_sample(x)                             # (K, P)
 
         output = self.output_map.forward(raw)                                   # (K,)
         d_output_d_raw = self.output_map.jacobian(raw)                          # (K, K)
@@ -389,8 +324,8 @@ class VQC:
                     it does not reset either -- and, for gradient_method='spsa', the c_k
                     perturbation schedule keeps counting from where it left off too.
         """
-        X = self._validate_X(X)
-        y = self._validate_y(y)
+        X = validate_X(X)
+        y = validate_y(y, self.num_of_outputs, self.multi_output)
         if X.shape[0] != y.shape[0]:
             raise ValueError("'X' and 'y' must have the same number of samples, got {} and {}.".format(X.shape[0], y.shape[0]))
         n_samples = X.shape[0]
@@ -464,30 +399,34 @@ class VQC:
         return loaded
 
 
+    # shortcuts to the QNN ----------------------------------------
+    @property
+    def feature_map(self): 
+        return self.qnn.feature_map
+    @property
+    def ansatz(self) -> Ansatz: 
+        return self.qnn.ansatz
+    @property
+    def observable(self): 
+        return self.qnn.observable
+    @property
+    def observables(self) -> List[Hamiltonian]: 
+        return self.qnn.observables
+    @property
+    def multi_output(self) -> bool:
+        return self.qnn.multi_output
+    @property
+    def num_of_outputs(self) -> int:
+        return self.qnn.num_of_outputs
+    @property
+    def num_of_iter_measure(self) -> int:
+        return self.qnn.num_of_iter_measure
+    @num_of_iter_measure.setter
+    def num_of_iter_measure(self, value: int) -> None:
+        self.qnn.num_of_iter_measure = value
+
+
     # ------------------------------------------------------------
-    @staticmethod
-    def _validate_X(X) -> np.ndarray:
-        X = np.asarray(X, dtype=float)
-        if X.ndim != 2:
-            raise ValueError(
-                "'X' must be 2-D with shape (n_samples, n_features), got shape {}. "
-                "For a single sample, wrap it as [x] or x.reshape(1, -1); for a single "
-                "feature, reshape as (n_samples, 1).".format(X.shape)
-            )
-        return X
-
-    def _validate_y(self, y) -> np.ndarray:
-        y = np.asarray(y, dtype=float)
-        if y.ndim == 0:
-            raise ValueError("'y' must have one target per sample (at least 1-D), got a scalar.")
-        if y.ndim > 2:
-            raise ValueError("'y' must be 1-D or 2-D, got shape {}.".format(y.shape))
-        if not self.multi_output:
-            y = y.flatten()                  # single observable: one scalar target per sample, as before
-        elif y.ndim == 2 and y.shape[1] != self.num_of_outputs:
-            raise ValueError("A 2-D 'y' needs one column per observable ({}), got shape {}.".format(self.num_of_outputs, y.shape))
-        return y
-
     @staticmethod
     def _check_gradient_options(gradient_method, spsa_c, spsa_gamma) -> None:
         if gradient_method not in ('parameter_shift', 'spsa'):
@@ -498,39 +437,12 @@ class VQC:
             raise ValueError("'spsa_gamma' must be positive, got {}.".format(spsa_gamma))
 
     @staticmethod
-    def _check_init(feature_map, ansatz, observable, loss, optimizer, num_of_iter_measure, output_map) -> None:
-        if not isinstance(ansatz, Ansatz):
-            raise TypeError("'ansatz' must be an Ansatz instance, got {}.".format(type(ansatz).__name__))
-
-        if feature_map is None:
-            if not ansatz.input_names:
-                raise ValueError(
-                    "feature_map=None requires an ansatz with symbolic input parameters "
-                    "(ansatz.input_names, e.g. DataReUploadingAnsatz); this ansatz has none, so the data would never enter the circuit."
-                )
-        else:
-            if not callable(feature_map):
-                raise TypeError("'feature_map' must be callable or None, got {}.".format(type(feature_map).__name__))
-            if ansatz.input_names:
-                raise ValueError(
-                    "This ansatz already carries the data through input parameters {} -- pass feature_map=None "
-                    "(using both would encode the sample twice).".format(ansatz.input_names)
-                )
-
-        if isinstance(observable, Hamiltonian):
-            pass
-        elif isinstance(observable, (list, tuple)) and len(observable) > 0 and all(isinstance(h, Hamiltonian) for h in observable):
-            pass
-        else:
-            raise TypeError("'observable' must be a Hamiltonian or a non-empty list of Hamiltonians, got {}.".format(type(observable).__name__))
+    def _check_init(loss, optimizer, output_map) -> None:
+        # the QNN validates feature_map / ansatz / observable / num_of_iter_measure itself
         if not isinstance(loss, Loss):
             raise TypeError("'loss' must be a Loss instance, got {}.".format(type(loss).__name__))
         if not isinstance(optimizer, Optimizer):
             raise TypeError("'optimizer' must be an Optimizer instance, got {}.".format(type(optimizer).__name__))
-        if not isinstance(num_of_iter_measure, int) or isinstance(num_of_iter_measure, bool):
-            raise TypeError("'num_of_iter_measure' must be an int, got {}.".format(type(num_of_iter_measure).__name__))
-        if num_of_iter_measure < 1:
-            raise ValueError("'num_of_iter_measure' must be at least 1, got {}.".format(num_of_iter_measure))
         if output_map is not None and not isinstance(output_map, OutputMap):
             raise TypeError("'output_map' must be an OutputMap instance (or None), got {}.".format(type(output_map).__name__))
 
@@ -545,8 +457,8 @@ class VQC:
 #   - Sampling-based (not observable-based) multi-class readout: read a full measured
 #     bitstring distribution via Result.count() instead of a Hamiltonian expectation
 #     value (this is what Qiskit's own VQC does: SamplerQNN + bitstring-to-class interpret
-#     function) -- a fundamentally different readout mechanism from the one here, worth its
-#     own OutputMap-like abstraction rather than bolting onto VQC as written.
+#     function) -- a fundamentally different readout mechanism from the one here, i.e. a
+#     second QNN class (a SamplerQNN counterpart) rather than a change to VQC.
 #   - Quantum kernel methods / QSVM: a different model family entirely (a classical SVM
 #     over a quantum-computed kernel matrix, from qml.feature_map's state overlaps) --
 #     would be its own class here, not a VQC variant.

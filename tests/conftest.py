@@ -33,7 +33,7 @@ def exact_expectations():
 @pytest.fixture
 def exact_measurements(monkeypatch):
     """
-    Replaces the shot-based find_expectation_value used by VQC with an exact one, so tests can
+    Replaces the shot-based find_expectation_value used by the QNN (and so by VQC) with an exact one, so tests can
     check gradients to ~1e-8 instead of ~1/sqrt(shots). Returns a dict whose 'calls' entry counts
     how many measurements were requested.
     """
@@ -45,7 +45,7 @@ def exact_measurements(monkeypatch):
         per_term = {p: float(c) * v for p, c, v in zip(hamiltonian.paulis, hamiltonian.coefs, values)}
         return per_term, sum(per_term.values())
 
-    monkeypatch.setattr('AriaQuanta.qml.models.vqc.find_expectation_value', exact_find_expectation_value)
+    monkeypatch.setattr('AriaQuanta.qml.models.qnn.find_expectation_value', exact_find_expectation_value)
     return counter
 
 

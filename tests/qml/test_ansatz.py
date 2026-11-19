@@ -1,8 +1,7 @@
 import numpy as np
 import pytest
 
-from AriaQuanta.aqc.ansatz import EfficientSU2Ansatz
-from AriaQuanta.qml.ansatz import HardwareEfficientAnsatz, DataReUploadingAnsatz
+from AriaQuanta.qml.ansatz import HardwareEfficientAnsatz, EfficientSU2Ansatz, DataReUploadingAnsatz
 
 
 def final_state(circuit):
@@ -64,23 +63,41 @@ def test_statevector_matches_qiskit():
                     circuit.cx(q, q + 1)
     np.testing.assert_allclose(final_state(ansatz), qiskit_state(n, build), atol=1e-10)
 
-def test_matches_efficient_su2_up_to_parameter_ordering():
-    # HardwareEfficientAnsatz(rotation=('RY', 'RZ')) is the same circuit as EfficientSU2Ansatz; only the
-    # parameter order differs (HEA: per qubit RY, RZ; EfficientSU2: all RY of the layer, then all RZ).
+# EfficientSU2Ansatz is a preset of HardwareEfficientAnsatz ----------------------------------------------------
+def test_efficient_su2_is_the_ry_rz_cx_linear_preset():
     n, reps = 3, 2
-    hea = HardwareEfficientAnsatz(n, rotation=('RY', 'RZ'), reps=reps)
-    esu = EfficientSU2Ansatz(n, reps=reps)
-    assert len(hea.params_names) == len(esu.params_names)
+    preset = EfficientSU2Ansatz(n, reps=reps)
+    generic = HardwareEfficientAnsatz(n, rotation=('RY', 'RZ'), entangler='CX', entanglement='linear', reps=reps)
+    assert isinstance(preset, HardwareEfficientAnsatz)
+    assert preset.params_names == generic.params_names
+    assert preset.gatesinfo == generic.gatesinfo == {'RY': 9, 'RZ': 9, 'CX': 4}
+    theta = np.random.default_rng(4).uniform(-np.pi, np.pi, len(preset.params_names))
+    preset.set_params_values(theta)
+    generic.set_params_values(theta)
+    np.testing.assert_allclose(final_state(preset), final_state(generic), atol=1e-12)
 
-    theta_hea = np.random.default_rng(4).uniform(-np.pi, np.pi, len(hea.params_names))
-    theta_esu = np.zeros_like(theta_hea)
+@pytest.mark.qiskit
+def test_efficient_su2_matches_qiskit_up_to_parameter_ordering():
+    pytest.importorskip('qiskit')
+    try:
+        from qiskit.circuit.library import efficient_su2
+    except ImportError:
+        pytest.skip('this Qiskit version has no efficient_su2() function')
+    n, reps = 3, 2
+    ansatz = EfficientSU2Ansatz(n, reps=reps)
+    theta = np.random.default_rng(4).uniform(-np.pi, np.pi, len(ansatz.params_names))
+    ansatz.set_params_values(theta)
+
+    # Qiskit orders a layer's angles as all RY (qubit 0..n-1), then all RZ; ours is per qubit: RY, RZ
+    theta_qiskit = np.zeros_like(theta)
     for layer in range(reps + 1):
         for q in range(n):
             for k in range(2):                                           # k = 0: RY, k = 1: RZ
-                theta_esu[layer * 2 * n + k * n + q] = theta_hea[layer * 2 * n + q * 2 + k]
-    hea.set_params_values(theta_hea)
-    esu.set_params_values(theta_esu)
-    np.testing.assert_allclose(final_state(hea), final_state(esu), atol=1e-12)
+                theta_qiskit[layer * 2 * n + k * n + q] = theta[layer * 2 * n + q * 2 + k]
+    circuit = efficient_su2(n, entanglement='linear', reps=reps).assign_parameters(theta_qiskit)
+
+    from qiskit.quantum_info import Statevector
+    np.testing.assert_allclose(final_state(ansatz), Statevector(circuit).reverse_qargs().data, atol=1e-10)
 
 def test_ansatz_validation():
     with pytest.raises(ValueError):

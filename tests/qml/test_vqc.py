@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from AriaQuanta.aqc.hamiltonian import Hamiltonian
+from AriaQuanta.qml.models.qnn import QNN
 from AriaQuanta.qml.models.vqc import VQC, IdentityOutputMap, ZToProbabilityOutputMap, SoftmaxOutputMap
 from AriaQuanta.qml.training.loss import CategoricalCrossEntropyLoss, BinaryCrossEntropyLoss, MSELoss, HingeLoss
 from AriaQuanta.qml.training.optimizer import Adam, GradientDescent
@@ -62,22 +63,6 @@ def qiskit_softmax_ce(x, theta, observables, label):
     return -np.log(p[label])
 
 
-# raw readout ---------------------------------------------------------------------------------------------
-@pytest.mark.qiskit
-def test_raw_expectations_match_qiskit(multiclass_vqc, three_observables, sample, theta0):
-    np.testing.assert_allclose(multiclass_vqc._raw_expectations(sample), qiskit_expectations(sample, theta0, three_observables), atol=1e-10)
-
-def test_observables_sharing_pauli_strings_are_measured_once(multiclass_vqc, sample, exact_measurements):
-    multiclass_vqc._raw_expectations(sample)
-    assert exact_measurements['calls'] == 1                       # 3 observables, 4 distinct Pauli strings -> one merged measurement
-
-def test_raw_expectations_apply_the_observable_coefficients(multiclass_vqc, three_observables, sample, exact_expectations):
-    raw = multiclass_vqc._raw_expectations(sample)
-    circuit = multiclass_vqc._build_circuit_for(sample, multiclass_vqc.ansatz)
-    z0, z1, z2, z12 = exact_expectations(circuit, ['Z0', 'Z1', 'Z2', 'Z1Z2'])
-    np.testing.assert_allclose(raw, [z0 + 0.5 * z12, z1 - 0.3 * z0, z2 + 0.2 * z12], atol=1e-12)
-
-
 # gradients ---------------------------------------------------------------------------------------------------
 @pytest.mark.qiskit
 def test_parameter_shift_chain_rule_matches_qiskit_finite_differences(multiclass_vqc, three_observables, sample, theta0):
@@ -88,6 +73,25 @@ def test_parameter_shift_chain_rule_matches_qiskit_finite_differences(multiclass
                     - qiskit_softmax_ce(sample, theta0 - h * e, three_observables, label)) / (2 * h) for e in np.eye(theta0.size)])
     assert loss_value == pytest.approx(qiskit_softmax_ce(sample, theta0, three_observables, label), abs=1e-10)
     np.testing.assert_allclose(gradient, fd, atol=1e-7)
+
+def test_vqc_is_a_qnn_plus_training(multiclass_vqc, theta0):
+    assert isinstance(multiclass_vqc.qnn, QNN)
+    assert multiclass_vqc.ansatz is multiclass_vqc.qnn.ansatz
+    assert multiclass_vqc.observables is multiclass_vqc.qnn.observables
+    assert multiclass_vqc.num_of_outputs == multiclass_vqc.qnn.num_of_outputs == 3
+    np.testing.assert_allclose(multiclass_vqc.qnn.params_values, theta0)
+    multiclass_vqc.num_of_iter_measure = 33
+    assert multiclass_vqc.qnn.num_of_iter_measure == 33
+
+def test_gradient_is_the_chain_rule_through_the_qnn_jacobian(multiclass_vqc, sample):
+    label = 1
+    raw = multiclass_vqc.qnn.forward_sample(sample)
+    D = multiclass_vqc.qnn.backward_sample(sample)                            # (K, P)
+    p = multiclass_vqc.output_map.forward(raw)
+    J = multiclass_vqc.output_map.jacobian(raw)                               # (K, K)
+    g = multiclass_vqc.loss.gradient(p, np.array([label])).reshape(-1)        # (K,)
+    gradient, _ = multiclass_vqc._gradient_for_sample(sample, label)
+    np.testing.assert_allclose(gradient, g @ J @ D, atol=1e-12)
 
 def test_integer_label_and_one_hot_target_give_the_same_gradient(multiclass_vqc, sample):
     g_label, l_label = multiclass_vqc._gradient_for_sample(sample, 1)
@@ -232,3 +236,4 @@ def test_invalid_gradient_options(ry_cx_ansatz, ry_feature_map):
     for kwargs in (dict(gradient_method='adjoint'), dict(spsa_c=0.0), dict(spsa_gamma=-1.0)):
         with pytest.raises(ValueError):
             VQC(ry_feature_map(N), ry_cx_ansatz(N, REPS), Hamiltonian([('Z0', 1.0)]), MSELoss(), Adam(), **kwargs)
+

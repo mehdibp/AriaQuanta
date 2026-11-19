@@ -102,3 +102,28 @@ def validate_words(data) -> np.ndarray:
     if np.any(words < 0):
         raise ValueError("qram_encoding stores non-negative integers, got a negative value.")
     return words
+
+
+# -------------------------------------------------------------------------------------------
+def validate_X(X) -> np.ndarray:
+    X = np.asarray(X, dtype=float)
+    if X.ndim != 2:
+        raise ValueError(
+            "'X' must be 2-D with shape (n_samples, n_features), got shape {}. "
+            "For a single sample, wrap it as [x] or x.reshape(1, -1); for a single "
+            "feature, reshape as (n_samples, 1).".format(X.shape)
+        )
+    return X
+
+# -------------------------------------------------------------------------------------------
+def validate_y(y, num_of_outputs: int, multi_output: bool) -> np.ndarray:
+    y = np.asarray(y, dtype=float)
+    if y.ndim == 0:
+        raise ValueError("'y' must have one target per sample (at least 1-D), got a scalar.")
+    if y.ndim > 2:
+        raise ValueError("'y' must be 1-D or 2-D, got shape {}.".format(y.shape))
+    if not multi_output:
+        y = y.flatten()                  # single observable: one scalar target per sample
+    elif y.ndim == 2 and y.shape[1] != num_of_outputs:
+        raise ValueError("A 2-D 'y' needs one column per observable ({}), got shape {}.".format(num_of_outputs, y.shape))
+    return y

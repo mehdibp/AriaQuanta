@@ -16,11 +16,12 @@ class HardwareEfficientAnsatz(Ansatz):
     entangling layer (a chosen two-qubit gate over a chosen connectivity pattern), plus one
     final rotation layer with no trailing entangler.
 
-    This is the same template AriaQuanta.aqc.ansatz.EfficientSU2Ansatz already implements
-    (RY+RZ rotations, CX entanglers, linear connectivity) -- generalized here to a
-    configurable rotation-gate set, entangler gate, and connectivity pattern, so e.g.
-    rotation='RY' alone reproduces Qiskit's RealAmplitudes ansatz, and
-    rotation=('RY','RZ') with the defaults reproduces EfficientSU2.
+    This is the generic template; EfficientSU2Ansatz below is just a preset of it (RY+RZ
+    rotations, CX entanglers, linear connectivity), the same relationship TwoLocal has with
+    EfficientSU2 / RealAmplitudes in Qiskit. rotation='RY' alone reproduces RealAmplitudes.
+    (Qiskit's own default connectivity for these two is 'reverse_linear', not 'linear' -- pass
+    entanglement='reverse_linear' of its own, or entanglement='linear' on the Qiskit side, when
+    comparing against it.)
 
     :param num_of_qubits: Number of qubits.
     :param rotation: Rotation gate name(s) applied every layer, in order, e.g. 'RY' or
@@ -75,3 +76,19 @@ class HardwareEfficientAnsatz(Ansatz):
             raise ValueError("'reps' must be non-negative, got {}.".format(reps))
         if entangler not in _ENTANGLER_GATES:
             raise ValueError("entangler must be one of {}, got {!r}.".format(list(_ENTANGLER_GATES), entangler))
+
+
+
+# -------------------------------------------------------------------------------------------
+class EfficientSU2Ansatz(HardwareEfficientAnsatz):
+    """
+    EfficientSU2 preset of HardwareEfficientAnsatz: RY + RZ rotations on every qubit, CX
+    entanglers over linear connectivity, `reps` entangler blocks and reps + 1 rotation layers.
+
+    Parameters are named like every HardwareEfficientAnsatz ('theta_l{layer}_q{qubit}_{RY|RZ}',
+    ordered per qubit: RY then RZ). This differs from Qiskit's EfficientSU2, which orders all RY
+    angles of a layer first and then all RZ angles -- same circuit, different parameter order.
+    """
+
+    def __init__(self, num_of_qubits: int, reps: int=3) -> None:
+        super().__init__(num_of_qubits, rotation=('RY', 'RZ'), entangler='CX', entanglement='linear', reps=reps)

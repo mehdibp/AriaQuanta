@@ -41,6 +41,7 @@ from .feature_map import (
 from .ansatz import (
     HardwareEfficientAnsatz,
     DataReUploadingAnsatz,
+    EfficientSU2Ansatz,
 )
 
 from .gradients import (
@@ -75,6 +76,8 @@ from .training import (
 )
 
 from .models import (
+    QNN,
+
     VQC,
     OutputMap,
     IdentityOutputMap,
